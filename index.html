@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Japanese Words</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px;
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #fafafa;
+    color: #222;
+    display: flex;
+    justify-content: center;
+  }
+  main { width: 100%; max-width: 420px; text-align: center; }
+  #progress { color: #888; font-size: 14px; margin-bottom: 12px; }
+
+  /* 图片：固定 3:2（930x620），其他比例的图片会被居中裁剪填满 */
+  #image {
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+  }
+  #en { font-size: 28px; font-weight: 600; margin: 16px 0; }
+
+  /* 答题区：真正的输入框是透明的，盖在上面；看到的文字由 #display 画出来 */
+  #answer-area { position: relative; height: 56px; }
+  #input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    font-size: 16px;            /* 16px 以上，避免 iPhone 自动放大页面 */
+    border: none;
+  }
+  #display {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    font-size: 28px;
+  }
+  /* 普通模式：一条直线 */
+  #display.line {
+    border-bottom: 2px solid #222;
+    padding-bottom: 6px;
+  }
+  /* 提示模式：每个假名一条短线 */
+  #display.slots { gap: 8px; }
+  .slot {
+    width: 36px;
+    height: 46px;
+    border-bottom: 2px solid #222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .slot.extra { border-bottom-color: transparent; }
+  .ghost { color: #bbb; }       /* 灰色的第一个假名提示 */
+  #display.ok { color: #1a8f3c; border-color: #1a8f3c; }
+  #display.ok .slot { border-color: #1a8f3c; }
+  .caret {
+    display: inline-block;
+    width: 2px;
+    height: 28px;
+    background: #4a7dff;
+    animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  button {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    background: #4a7dff;
+    color: #fff;
+  }
+  button.small {
+    background: none;
+    color: #888;
+    font-size: 14px;
+  }
+  #feedback { min-height: 96px; margin-top: 16px; }
+  #verdict { font-size: 18px; font-weight: 600; }
+  .correct { color: #1a8f3c; }
+  .wrong { color: #d03030; }
+  #kanji { font-size: 36px; margin-top: 4px; }
+  #kana { font-size: 20px; color: #555; }
+  /* 词汇页 */
+  h1 { font-size: 22px; margin: 4px 0 16px; }
+  #study-info { color: #555; margin-bottom: 4px; }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin-top: 8px;
+    padding: 12px;
+    background: #fff;
+    color: #222;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    text-align: left;
+    font-size: 16px;
+  }
+  .row .main { font-size: 18px; }
+  .row .sub { color: #777; font-size: 14px; }
+  .row .status { color: #777; font-size: 14px; text-align: right; white-space: nowrap; }
+  .row .status.due { color: #d03030; font-weight: 600; }
+  #tools { margin-top: 24px; display: flex; }
+  #tools button { margin-top: 0; }
+  #quit { width: auto; margin: 0; padding: 0 4px; float: left; }
+  .hidden { display: none; }
+  .invisible { visibility: hidden; }
+</style>
+</head>
+<body>
+<main>
+  <!-- 首页：全部词汇 -->
+  <div id="home" class="hidden">
+    <h1>Words</h1>
+    <div id="study-info"></div>
+    <button id="study" type="button">Study</button>
+    <div id="batch-list"></div>
+    <div id="tools">
+      <button id="export" type="button" class="small">Export progress</button>
+      <button id="import" type="button" class="small">Import progress</button>
+      <button id="reset" type="button" class="small">Reset</button>
+    </div>
+    <input id="import-file" type="file" accept="application/json,.json" class="hidden">
+  </div>
+
+  <!-- 一个 batch 里的单词列表 -->
+  <div id="batch" class="hidden">
+    <button id="back" type="button" class="small">&larr; Back</button>
+    <h1 id="batch-title"></h1>
+    <div id="word-list"></div>
+  </div>
+
+  <!-- 答题 -->
+  <div id="quiz" class="hidden">
+    <button id="quit" type="button" class="small">&times; Quit</button>
+    <div id="progress"></div>
+    <img id="image" alt="">
+    <div id="en"></div>
+    <form id="form">
+      <div id="answer-area">
+        <div id="display" class="line"></div>
+        <input id="input" type="text" inputmode="text"
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <button id="button" type="submit">Hint</button>
+    </form>
+    <div id="feedback">
+      <div id="verdict"></div>
+      <div id="kanji"></div>
+      <div id="kana"></div>
+    </div>
+  </div>
+
+  <div id="done" class="hidden">
+    <h2>Group complete!</h2>
+    <button id="continue" type="button">Continue</button>
+  </div>
+</main>
+
+<!-- WanaKana：把罗马字转换成假名 -->
+<script src="https://unpkg.com/wanakana"></script>
+<script>
+// ---------- 设置 ----------
+const GROUP_SIZE = 12;          // 每组单词数
+const NEW_PER_GROUP = 4;        // 有复习词时，每组的新词数
+const CORRECT_AFTER_MISS = 3;   // 答错后需要再答对的次数
+const REPEAT_GAP = 2;            // 答错的词隔几个别的词之后再出现
+const PAUSE_MS = 1000;          // 答对后停留多久再进入下一个词（毫秒）
+// 复习间隔（天）。复习时答对前进一级，答错回到第一级（1 天 = 24 小时）
+const INTERVAL_DAYS = [1, 2, 4, 7, 14, 30, 60];
+// 新词第一次就答对：直接从这一级开始（INTERVAL_DAYS[3] = 7 天）
+const FIRST_CORRECT_LEVEL = 3;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const STORAGE_KEY = "jpwords-progress-v2";
+
+// ---------- 页面元素 ----------
+const el = {
+  progress:  document.getElementById("progress"),
+  quiz:      document.getElementById("quiz"),
+  done:      document.getElementById("done"),
+  image:     document.getElementById("image"),
+  en:        document.getElementById("en"),
+  form:      document.getElementById("form"),
+  input:     document.getElementById("input"),
+  display:   document.getElementById("display"),
+  button:    document.getElementById("button"),
+  verdict:   document.getElementById("verdict"),
+  kanji:     document.getElementById("kanji"),
+  kana:      document.getElementById("kana"),
+  home:       document.getElementById("home"),
+  studyInfo:  document.getElementById("study-info"),
+  study:      document.getElementById("study"),
+  batchList:  document.getElementById("batch-list"),
+  exportBtn:  document.getElementById("export"),
+  importBtn:  document.getElementById("import"),
+  importFile: document.getElementById("import-file"),
+  reset:      document.getElementById("reset"),
+  batch:      document.getElementById("batch"),
+  back:       document.getElementById("back"),
+  batchTitle: document.getElementById("batch-title"),
+  wordList:   document.getElementById("word-list"),
+  quit:       document.getElementById("quit"),
+  continue:   document.getElementById("continue"),
+};
+
+// ---------- 状态 ----------
+let words = [];        // words.json 里的全部单词
+let group = [];        // 本组的 12 个条目
+let queue = [];        // 本组还没 clear 的条目
+let current = null;    // 当前条目：{ word, need, missed }
+// 一个词出现一次，最多经过这几个阶段：
+//   "first"    第一次机会：一条直线
+//   "hint"     第二次机会：显示字数和第一个假名（已经算错）
+//   "practice" 已揭晓答案，照着再打一遍（只是练习）
+//   "done"     已打对，停留一秒后自动进入下一个词
+let stage = "first";
+let hintShown = false; // 答题区是否已变成短线
+let shownText = "";    // "done" 阶段，答题区里保留的文字
+let nextTimer = null;  // 答对后"停留一秒"的计时器
+
+// ---------- 学习进度（保存在这台手机的浏览器里） ----------
+// 格式：
+// {
+//   "version": 2,
+//   "words": {
+//     "au-to_meet": { "level": 1, "due": 1795000000000, "last": 1794900000000, "misses": 2 }
+//   }
+// }
+// level = 在 INTERVAL_DAYS 里的位置；due = 下次复习时间；last = 上次学习时间
+// misses = 累计有多少组答错过这个词
+// 时间都是毫秒时间戳（Date.now()）
+function loadProgress() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved && saved.words) return saved;
+  } catch (error) { /* 读不到就当作没有进度 */ }
+  return { version: 2, words: {} };
+}
+
+function saveProgress(progress) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+  } catch (error) { /* 存不了就算了，不影响本组学习 */ }
+}
+
+// ---------- 工具函数 ----------
+function shuffle(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// 把输入和答案都统一成平假名再比较
+function normalize(text) {
+  return wanakana.toHiragana(text.trim().toLowerCase());
+}
+
+// 播放读音：先尝试音频文件，没有文件就用浏览器的日语语音合成
+function playSound(word) {
+  const audio = new Audio(word.audio);
+  audio.play().catch(() => speak(word.kana));
+}
+
+function speak(text) {
+  if (!("speechSynthesis" in window)) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "ja-JP";
+  u.rate = 0.9;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+function formatWhen(time) {
+  const diff = time - Date.now();
+  if (diff <= 0) return "now";
+  const hours = Math.ceil(diff / (60 * 60 * 1000));
+  if (hours < 24) return "in " + hours + " h";
+  return "in " + Math.round(diff / DAY_MS) + " d";
+}
+
+// 切换页面：home / batch / quiz / done
+function show(name) {
+  for (const view of ["home", "batch", "quiz", "done"]) {
+    el[view].classList.toggle("hidden", view !== name);
+  }
+}
+
+// ---------- 选出一组单词 ----------
+function pickGroup() {
+  const progress = loadProgress();
+  const now = Date.now();
+
+  // 新词：还没学过的，按 words.json 里的顺序
+  const fresh = words.filter((w) => !progress.words[w.id]);
+
+  // 复习词：已经到复习时间的，过期最久的排最前
+  const review = words
+    .filter((w) => progress.words[w.id] && progress.words[w.id].due <= now)
+    .sort((a, b) => progress.words[a.id].due - progress.words[b.id].due);
+
+  let newCount = review.length === 0 ? GROUP_SIZE : NEW_PER_GROUP;
+  newCount = Math.min(newCount, fresh.length);
+  const reviewCount = Math.min(GROUP_SIZE - newCount, review.length);
+  // 复习词不够 8 个时，用新词补满
+  newCount = Math.min(GROUP_SIZE - reviewCount, fresh.length);
+
+  return {
+    fresh: fresh.slice(0, newCount),
+    review: review.slice(0, reviewCount),
+  };
+}
+
+// ---------- 首页：全部词汇 ----------
+function renderHome() {
+  const progress = loadProgress();
+  const now = Date.now();
+  const picked = pickGroup();
+  const count = picked.fresh.length + picked.review.length;
+
+  if (count > 0) {
+    el.studyInfo.textContent =
+      "Next group: " + picked.fresh.length + " new, " + picked.review.length + " review";
+    el.study.classList.remove("hidden");
+  } else {
+    // 没有新词，也没有到期的复习词
+    const dues = Object.values(progress.words).map((p) => p.due);
+    el.studyInfo.textContent = dues.length
+      ? "Nothing to review yet. Next review " + formatWhen(Math.min(...dues)) + "."
+      : "No words found.";
+    el.study.classList.add("hidden");
+  }
+
+  // 每个 batch 一行
+  const batches = [...new Set(words.map((w) => w.batch))].sort((a, b) => a - b);
+  el.batchList.innerHTML = "";
+  for (const batch of batches) {
+    const list = words.filter((w) => w.batch === batch);
+    const learned = list.filter((w) => progress.words[w.id]);
+    const due = learned.filter((w) => progress.words[w.id].due <= now);
+
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "row";
+    const left = document.createElement("div");
+    left.className = "main";
+    left.textContent = "Batch " + batch;
+    const right = document.createElement("div");
+    right.className = "status";
+    right.textContent = learned.length + " / " + list.length + " learned"
+      + (due.length ? ", " + due.length + " to review" : "");
+    row.append(left, right);
+    row.addEventListener("click", () => renderBatch(batch));
+    el.batchList.appendChild(row);
+  }
+  show("home");
+}
+
+// ---------- 一个 batch 的单词列表 ----------
+function renderBatch(batch) {
+  const progress = loadProgress();
+  const now = Date.now();
+  el.batchTitle.textContent = "Batch " + batch;
+  el.wordList.innerHTML = "";
+
+  for (const word of words.filter((w) => w.batch === batch)) {
+    const p = progress.words[word.id];
+
+    const row = document.createElement("div");
+    row.className = "row";
+    const left = document.createElement("div");
+    const main = document.createElement("div");
+    main.className = "main";
+    main.textContent = word.kanji + "  " + word.kana;
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = word.en;
+    left.append(main, sub);
+
+    const status = document.createElement("div");
+    status.className = "status";
+    if (!p) {
+      status.textContent = "New";
+    } else if (p.due <= now) {
+      status.textContent = "Review now";
+      status.classList.add("due");
+    } else {
+      status.textContent = "Review " + formatWhen(p.due);
+    }
+    row.append(left, status);
+    el.wordList.appendChild(row);
+  }
+  show("batch");
+}
+
+// ---------- 流程 ----------
+function startGroup() {
+  const picked = pickGroup();
+  group = picked.fresh.concat(picked.review)
+    .map((word) => ({ word: word, need: 1, missed: false }));
+  queue = shuffle(group);
+  show("quiz");
+  showNext();
+}
+
+function showNext() {
+  if (queue.length === 0) {
+    finishGroup();
+    return;
+  }
+  current = queue.shift();
+  stage = "first";
+  hintShown = false;
+  el.button.classList.remove("invisible");
+
+  updateProgress();
+  el.image.src = current.word.image;
+  el.en.textContent = current.word.en;
+  el.input.value = "";
+  el.input.focus();
+  el.verdict.textContent = "";
+  el.verdict.className = "";
+  el.kanji.textContent = "";
+  el.kana.textContent = "";
+  render();
+}
+
+function updateProgress() {
+  const cleared = group.filter((item) => item.need === 0).length;
+  el.progress.textContent = cleared + " / " + group.length;
+}
+
+// 把还没 clear 的词放回队列：隔 REPEAT_GAP 个别的词之后再出现
+// 例：第 1 个词答错，第 2、3 个词之后，它在第 4 个位置重新出现
+function requeue(item) {
+  const index = Math.min(REPEAT_GAP, queue.length);
+  queue.splice(index, 0, item);
+}
+
+function showAnswer() {
+  el.kanji.textContent = current.word.kanji;
+  el.kana.textContent = current.word.kana;
+  playSound(current.word);
+}
+
+// 打出了正确的单词
+function onCorrect() {
+  if (stage === "first") {
+    // 只有第一次机会打对才算答对
+    current.need -= 1;
+    if (current.need > 0) requeue(current);
+  }
+  if (stage !== "practice") {
+    el.verdict.textContent = "Correct";
+    el.verdict.className = "correct";
+  }
+  el.input.value = current.word.kana;
+  shownText = current.word.kana;
+  stage = "done";
+  el.button.classList.add("invisible");
+  updateProgress();
+  render(true);
+  showAnswer();
+  nextTimer = setTimeout(showNext, PAUSE_MS);
+}
+
+// 按了 Hint（或回车）
+function onHint() {
+  if (stage === "first") {
+    // 第一次没答出来：算错，给出字数和第一个假名，再给一次机会
+    current.need = CORRECT_AFTER_MISS;
+    current.missed = true;
+    requeue(current);
+    stage = "hint";
+    hintShown = true;
+    el.input.value = "";
+    updateProgress();
+    render();
+  } else if (stage === "hint") {
+    // 有提示还是没答出来：揭晓答案，照着打一遍才能继续
+    stage = "practice";
+    el.button.classList.add("invisible");
+    el.verdict.textContent = "Wrong";
+    el.verdict.className = "wrong";
+    el.input.value = "";
+    render();
+    showAnswer();
+  }
+  // "practice" 和 "done" 阶段没有 Hint 按钮，回车键也不做任何事
+}
+
+function finishGroup() {
+  // 整组 clear 之后才保存进度；中途退出的话，这一组不算
+  const progress = loadProgress();
+  const now = Date.now();
+  for (const item of group) {
+    const previous = progress.words[item.word.id];
+    let level;
+    if (item.missed) {
+      level = 0;                                   // 答错：24 小时后复习
+    } else if (!previous) {
+      level = FIRST_CORRECT_LEVEL;                 // 新词第一次就答对：一周后复习
+    } else {
+      level = Math.min(previous.level + 1, INTERVAL_DAYS.length - 1);  // 复习答对：前进一级
+    }
+    progress.words[item.word.id] = {
+      level: level,
+      due: now + INTERVAL_DAYS[level] * DAY_MS,
+      last: now,
+      misses: ((previous && previous.misses) || 0) + (item.missed ? 1 : 0),
+    };
+  }
+  saveProgress(progress);
+  show("done");
+}
+
+// ---------- 画出答题区 ----------
+function render(isCorrect) {
+  const locked = stage === "done";
+  const typed = Array.from(locked ? shownText : el.input.value);
+  const answer = Array.from(current.word.kana);
+
+  el.display.innerHTML = "";
+  el.display.className = hintShown ? "slots" : "line";
+  if (isCorrect) el.display.classList.add("ok");
+
+  if (!hintShown) {
+    // 普通模式：一条直线，上面是打出来的字
+    const text = document.createElement("span");
+    text.textContent = typed.join("");
+    el.display.appendChild(text);
+    if (!locked) el.display.appendChild(makeCaret());
+    return;
+  }
+
+  // 提示模式：每个假名一条短线，第一格用灰色显示第一个假名
+  const count = Math.max(answer.length, typed.length);
+  for (let i = 0; i < count; i++) {
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    if (i >= answer.length) slot.classList.add("extra");
+
+    if (i < typed.length) {
+      slot.textContent = typed[i];
+    } else if (i === typed.length && !locked && i > 0) {
+      slot.appendChild(makeCaret());
+    } else if (i === 0) {
+      slot.textContent = answer[0];
+      slot.classList.add("ghost");
+    }
+    el.display.appendChild(slot);
+  }
+}
+
+function makeCaret() {
+  const caret = document.createElement("span");
+  caret.className = "caret";
+  return caret;
+}
+
+// ---------- 事件 ----------
+wanakana.bind(el.input);            // 输入框：边打罗马字边转成假名
+
+// 每打一个字就检查一次，打对了自动显示 Correct
+el.input.addEventListener("input", () => {
+  if (stage === "done") {
+    el.input.value = shownText;     // 输入结束后不再接受输入
+    return;
+  }
+  if (normalize(el.input.value) === normalize(current.word.kana)) {
+    onCorrect();
+  } else {
+    render();
+  }
+});
+
+// Hint 按钮和回车键
+el.form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  onHint();
+});
+
+// 点 Hint 时不让输入框失去焦点，这样手机键盘不会收起来
+el.button.addEventListener("pointerdown", (event) => event.preventDefault());
+
+el.study.addEventListener("click", startGroup);
+el.continue.addEventListener("click", renderHome);
+el.back.addEventListener("click", renderHome);
+
+el.quit.addEventListener("click", () => {
+  clearTimeout(nextTimer);
+  renderHome();
+});
+
+// 导出：把学习记录下载成一个 JSON 文件（备份，或发给别人）
+el.exportBtn.addEventListener("click", () => {
+  const text = JSON.stringify(loadProgress(), null, 2);
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+  link.download = "jpwords-progress-" + new Date().toISOString().slice(0, 10) + ".json";
+  link.click();
+});
+
+// 导入：用之前导出的文件覆盖现在的学习记录
+el.importBtn.addEventListener("click", () => el.importFile.click());
+el.importFile.addEventListener("change", async () => {
+  const file = el.importFile.files[0];
+  el.importFile.value = "";
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!data || typeof data.words !== "object") throw new Error("bad file");
+    if (!confirm("Replace current progress with this file?")) return;
+    saveProgress(data);
+    renderHome();
+  } catch (error) {
+    alert("This file is not a valid progress file.");
+  }
+});
+
+el.reset.addEventListener("click", () => {
+  if (confirm("Delete all progress and start over?")) {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (error) {}
+    renderHome();
+  }
+});
+
+// ---------- 启动 ----------
+fetch("words.json")
+  .then((response) => response.json())
+  .then((data) => {
+    words = data;
+    renderHome();
+    // 请求浏览器不要自动清理这个网站的数据（浏览器可能不理会）
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+  })
+  .catch(() => {
+    show("home");
+    el.studyInfo.textContent = "Could not load words.json";
+    el.study.classList.add("hidden");
+  });
+</script>
+</body>
+</html>
