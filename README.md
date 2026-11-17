@@ -5,7 +5,7 @@ You see a picture and an English meaning, and you type the Japanese word.
 
 ## Use it on your phone
 
-1. Open the link in your phone's browser: `https://lily-kong.github.com/`
+1. Open the link in your phone's browser: `https://lily-kong.github.io/kotoba-for-friends/`
 2. Add it to your home screen so it opens like an app:
    - **iPhone (Safari):** Share button → *Add to Home Screen*
    - **Android (Chrome):** menu (⋮) → *Add to Home screen*
