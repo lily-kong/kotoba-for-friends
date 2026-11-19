@@ -1,326 +1,38 @@
 [
-  {
-    "id": "au-to_meet",
-    "kana": "あう",
-    "kanji": "会う",
-    "en": "to meet",
-    "image": "images/au-to_meet.jpg",
-    "audio": "audio/au-to_meet.mp3",
-    "batch": 1
-  },
-  {
-    "id": "akeru-to_open",
-    "kana": "あける",
-    "kanji": "開ける",
-    "en": "to open",
-    "image": "images/akeru-to_open.jpg",
-    "audio": "audio/akeru-to_open.mp3",
-    "batch": 1
-  },
-  {
-    "id": "asobu-to_play",
-    "kana": "あそぶ",
-    "kanji": "遊ぶ",
-    "en": "to play",
-    "image": "images/asobu-to_play.jpg",
-    "audio": "audio/asobu-to_play.mp3",
-    "batch": 1
-  },
-  {
-    "id": "aru-to_have",
-    "kana": "ある",
-    "kanji": "ある",
-    "en": "to have",
-    "image": "images/aru-to_have.jpg",
-    "audio": "audio/aru-to_have.mp3",
-    "batch": 1
-  },
-  {
-    "id": "aruku-to_walk",
-    "kana": "あるく",
-    "kanji": "歩く",
-    "en": "to walk",
-    "image": "images/aruku-to_walk.jpg",
-    "audio": "audio/aruku-to_walk.mp3",
-    "batch": 1
-  },
-  {
-    "id": "iu-to_say",
-    "kana": "いう",
-    "kanji": "言う",
-    "en": "to say",
-    "image": "images/iu-to_say.jpg",
-    "audio": "audio/iu-to_say.mp3",
-    "batch": 1
-  },
-  {
-    "id": "iku-to_go",
-    "kana": "いく",
-    "kanji": "行く",
-    "en": "to go",
-    "image": "images/iku-to_go.jpg",
-    "audio": "audio/iku-to_go.mp3",
-    "batch": 1
-  },
-  {
-    "id": "iru-to_be_present",
-    "kana": "いる",
-    "kanji": "いる",
-    "en": "to be present",
-    "image": "images/iru-to_be_present.jpg",
-    "audio": "audio/iru-to_be_present.mp3",
-    "batch": 1
-  },
-  {
-    "id": "iru-to_require",
-    "kana": "いる",
-    "kanji": "要る",
-    "en": "to require",
-    "image": "images/iru-to_require.jpg",
-    "audio": "audio/iru-to_require.mp3",
-    "batch": 1
-  },
-  {
-    "id": "utau-to_sing",
-    "kana": "うたう",
-    "kanji": "歌う",
-    "en": "to sing",
-    "image": "images/utau-to_sing.jpg",
-    "audio": "audio/utau-to_sing.mp3",
-    "batch": 1
-  },
-  {
-    "id": "okiru-to_wake_up",
-    "kana": "おきる",
-    "kanji": "起きる",
-    "en": "to wake up",
-    "image": "images/okiru-to_wake_up.jpg",
-    "audio": "audio/okiru-to_wake_up.mp3",
-    "batch": 1
-  },
-  {
-    "id": "oshieru-to_tell",
-    "kana": "おしえる",
-    "kanji": "教える",
-    "en": "to tell",
-    "image": "images/oshieru-to_tell.jpg",
-    "audio": "audio/oshieru-to_tell.mp3",
-    "batch": 1
-  },
-  {
-    "id": "oshieru-to_teach",
-    "kana": "おしえる",
-    "kanji": "教える",
-    "en": "to teach",
-    "image": "images/oshieru-to_teach.jpg",
-    "audio": "audio/oshieru-to_teach.mp3",
-    "batch": 1
-  },
-  {
-    "id": "oyogu-to_swim",
-    "kana": "およぐ",
-    "kanji": "泳ぐ",
-    "en": "to swim",
-    "image": "images/oyogu-to_swim.jpg",
-    "audio": "audio/oyogu-to_swim.mp3",
-    "batch": 1
-  },
-  {
-    "id": "owaru-to_finish",
-    "kana": "おわる",
-    "kanji": "終わる",
-    "en": "to finish",
-    "image": "images/owaru-to_finish.jpg",
-    "audio": "audio/owaru-to_finish.mp3",
-    "batch": 1
-  },
-  {
-    "id": "kau-to_buy",
-    "kana": "かう",
-    "kanji": "買う",
-    "en": "to buy",
-    "image": "images/kau-to_buy.jpg",
-    "audio": "audio/kau-to_buy.mp3",
-    "batch": 1
-  },
-  {
-    "id": "kaeru-to_go_home",
-    "kana": "かえる",
-    "kanji": "帰る",
-    "en": "to go home",
-    "image": "images/kaeru-to_go_home.jpg",
-    "audio": "audio/kaeru-to_go_home.mp3",
-    "batch": 1
-  },
-  {
-    "id": "kaku-to_write",
-    "kana": "かく",
-    "kanji": "書く",
-    "en": "to write",
-    "image": "images/kaku-to_write.jpg",
-    "audio": "audio/kaku-to_write.mp3",
-    "batch": 1
-  },
-  {
-    "id": "kaku-to_draw",
-    "kana": "かく",
-    "kanji": "描く",
-    "en": "to draw (a picture)",
-    "image": "images/kaku-to_draw.jpg",
-    "audio": "audio/kaku-to_draw.mp3",
-    "batch": 1
-  },
-  {
-    "id": "kasu-to_lend",
-    "kana": "かす",
-    "kanji": "貸す",
-    "en": "to lend",
-    "image": "images/kasu-to_lend.jpg",
-    "audio": "audio/kasu-to_lend.mp3",
-    "batch": 1
-  },
-  {
-    "id": "kiku-to_listen",
-    "kana": "きく",
-    "kanji": "聞く",
-    "en": "to listen",
-    "image": "images/kiku-to_listen.jpg",
-    "audio": "audio/kiku-to_listen.mp3",
-    "batch": 1
-  },
-  {
-    "id": "kiru-to_wear",
-    "kana": "きる",
-    "kanji": "着る",
-    "en": "to wear",
-    "image": "images/kiru-to_wear.jpg",
-    "audio": "audio/kiru-to_wear.mp3",
-    "batch": 1
-  },
-  {
-    "id": "kiru-to_cut",
-    "kana": "きる",
-    "kanji": "切る",
-    "en": "to cut",
-    "image": "images/kiru-to_cut.jpg",
-    "audio": "audio/kiru-to_cut.mp3",
-    "batch": 1
-  },
-  {
-    "id": "kuru-to_come",
-    "kana": "くる",
-    "kanji": "来る",
-    "en": "to come",
-    "image": "images/kuru-to_come.jpg",
-    "audio": "audio/kuru-to_come.mp3",
-    "batch": 1
-  },
-  {
-    "id": "shiru-to_know",
-    "kana": "しる",
-    "kanji": "知る",
-    "en": "to know",
-    "image": "images/shiru-to_know.jpg",
-    "audio": "audio/shiru-to_know.mp3",
-    "batch": 1
-  },
-  {
-    "id": "sumu-to_live",
-    "kana": "すむ",
-    "kanji": "住む",
-    "en": "to live",
-    "image": "images/sumu-to_live.jpg",
-    "audio": "audio/sumu-to_live.mp3",
-    "batch": 1
-  },
-  {
-    "id": "suru-to_do",
-    "kana": "する",
-    "kanji": "する",
-    "en": "to do",
-    "image": "images/suru-to_do.jpg",
-    "audio": "audio/suru-to_do.mp3",
-    "batch": 1
-  },
-  {
-    "id": "taberu-to_eat",
-    "kana": "たべる",
-    "kanji": "食べる",
-    "en": "to eat",
-    "image": "images/taberu-to_eat.jpg",
-    "audio": "audio/taberu-to_eat.mp3",
-    "batch": 1
-  },
-  {
-    "id": "tsukuru-to_make",
-    "kana": "つくる",
-    "kanji": "作る",
-    "en": "to make",
-    "image": "images/tsukuru-to_make.jpg",
-    "audio": "audio/tsukuru-to_make.mp3",
-    "batch": 1
-  },
-  {
-    "id": "neru-to_sleep",
-    "kana": "ねる",
-    "kanji": "寝る",
-    "en": "to sleep",
-    "image": "images/neru-to_sleep.jpg",
-    "audio": "audio/neru-to_sleep.mp3",
-    "batch": 1
-  },
-  {
-    "id": "nomu-to_drink",
-    "kana": "のむ",
-    "kanji": "飲む",
-    "en": "to drink",
-    "image": "images/nomu-to_drink.jpg",
-    "audio": "audio/nomu-to_drink.mp3",
-    "batch": 1
-  },
-  {
-    "id": "matsu-to_wait",
-    "kana": "まつ",
-    "kanji": "待つ",
-    "en": "to wait",
-    "image": "images/matsu-to_wait.jpg",
-    "audio": "audio/matsu-to_wait.mp3",
-    "batch": 1
-  },
-  {
-    "id": "miru-to_watch",
-    "kana": "みる",
-    "kanji": "見る",
-    "en": "to watch",
-    "image": "images/miru-to_watch.jpg",
-    "audio": "audio/miru-to_watch.mp3",
-    "batch": 1
-  },
-  {
-    "id": "yasumu-to_rest",
-    "kana": "やすむ",
-    "kanji": "休む",
-    "en": "to rest",
-    "image": "images/yasumu-to_rest.jpg",
-    "audio": "audio/yasumu-to_rest.mp3",
-    "batch": 1
-  },
-  {
-    "id": "yomu-to_read",
-    "kana": "よむ",
-    "kanji": "読む",
-    "en": "to read",
-    "image": "images/yomu-to_read.jpg",
-    "audio": "audio/yomu-to_read.mp3",
-    "batch": 1
-  },
-  {
-    "id": "wakaru-to_understand",
-    "kana": "わかる",
-    "kanji": "分かる",
-    "en": "to understand",
-    "image": "images/wakaru-to_understand.jpg",
-    "audio": "audio/wakaru-to_understand.mp3",
-    "batch": 1
-  }
+  {"id": "au-to_meet", "kana": "あう", "kanji": "会う", "en": "to meet", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "akeru-to_open", "kana": "あける", "kanji": "開ける", "en": "to open", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "asobu-to_play", "kana": "あそぶ", "kanji": "遊ぶ", "en": "to play", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "aru-to_have", "kana": "ある", "kanji": "ある", "en": "to have", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "aruku-to_walk", "kana": "あるく", "kanji": "歩く", "en": "to walk", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "iu-to_say", "kana": "いう", "kanji": "言う", "en": "to say", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "iku-to_go", "kana": "いく", "kanji": "行く", "en": "to go", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "iru-to_be_present", "kana": "いる", "kanji": "いる", "en": "to be present", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "iru-to_require", "kana": "いる", "kanji": "要る", "en": "to require", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "utau-to_sing", "kana": "うたう", "kanji": "歌う", "en": "to sing", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "okiru-to_wake_up", "kana": "おきる", "kanji": "起きる", "en": "to wake up", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "oshieru-to_tell", "kana": "おしえる", "kanji": "教える", "en": "to tell", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "oshieru-to_teach", "kana": "おしえる", "kanji": "教える", "en": "to teach", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "oyogu-to_swim", "kana": "およぐ", "kanji": "泳ぐ", "en": "to swim", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "owaru-to_finish", "kana": "おわる", "kanji": "終わる", "en": "to finish", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "kau-to_buy", "kana": "かう", "kanji": "買う", "en": "to buy", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "kaeru-to_go_home", "kana": "かえる", "kanji": "帰る", "en": "to go home", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "kaku-to_write", "kana": "かく", "kanji": "書く", "en": "to write", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "kaku-to_draw", "kana": "かく", "kanji": "描く", "en": "to draw", "note": "(draw a picture)", "tags": ["Batch 1"], "retired": false},
+  {"id": "kasu-to_lend", "kana": "かす", "kanji": "貸す", "en": "to lend", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "kiku-to_listen", "kana": "きく", "kanji": "聞く", "en": "to listen", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "kiru-to_wear", "kana": "きる", "kanji": "着る", "en": "to wear", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "kiru-to_cut", "kana": "きる", "kanji": "切る", "en": "to cut", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "kuru-to_come", "kana": "くる", "kanji": "来る", "en": "to come", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "shiru-to_know", "kana": "しる", "kanji": "知る", "en": "to know", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "sumu-to_live", "kana": "すむ", "kanji": "住む", "en": "to live", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "suru-to_do", "kana": "する", "kanji": "する", "en": "to do", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "taberu-to_eat", "kana": "たべる", "kanji": "食べる", "en": "to eat", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "tsukuru-to_make", "kana": "つくる", "kanji": "作る", "en": "to make", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "neru-to_sleep", "kana": "ねる", "kanji": "寝る", "en": "to sleep", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "nomu-to_drink", "kana": "のむ", "kanji": "飲む", "en": "to drink", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "matsu-to_wait", "kana": "まつ", "kanji": "待つ", "en": "to wait", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "miru-to_watch", "kana": "みる", "kanji": "見る", "en": "to watch", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "yasumu-to_rest", "kana": "やすむ", "kanji": "休む", "en": "to rest", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "yomu-to_read", "kana": "よむ", "kanji": "読む", "en": "to read", "note": "", "tags": ["Batch 1"], "retired": false},
+  {"id": "wakaru-to_understand", "kana": "わかる", "kanji": "分かる", "en": "to understand", "note": "", "tags": ["Batch 1"], "retired": false}
 ]

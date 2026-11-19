@@ -1,0 +1,181 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 16px;
+  font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  background: #fafafa;
+  color: #222;
+  display: flex;
+  justify-content: center;
+}
+main { width: 100%; max-width: 420px; text-align: center; }
+/* 答题页顶部：× 按钮 + 本组进度条 */
+#quizTop { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+#progress { flex: 1; height: 8px; background: #e3e5ea; border-radius: 4px; overflow: hidden; }
+#progressFill { width: 0; height: 100%; background: #1a8f3c; transition: width 0.3s ease; }
+
+/* 图片：固定 3:2（930x620），其他比例的图片会被居中裁剪填满 */
+#image {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  max-height: 30vh;           /* 小屏手机上把图片压矮，给键盘留位置 */
+  object-fit: cover;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+/* 提示（词性、自他动词等）：小字，写在图片下面、英文上面；没有提示时不占位置 */
+#note { font-size: 14px; color: #888; margin-top: 10px; }
+#note:empty { display: none; }
+
+/* 英文单词：一开始放大、往下移，在画面中间；
+   开始打字后（#quiz 加上 started），缩小、移回图片下方 */
+#en {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 16px 0;
+  transform: translateY(40px) scale(1.4);
+}
+.started #en { transform: none; transition: transform 0.25s ease; }
+
+/* 答题区：没有真正的输入框，文字由 JS 画出来，所以手机不会弹出自带键盘。
+   开始打字前是隐藏的 */
+#display {
+  height: 56px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  font-size: 28px;
+  opacity: 0;
+}
+.started #display { opacity: 1; transition: opacity 0.25s ease; }
+/* 提示模式：每个假名一条浅色短线 */
+#display.slots { gap: 8px; }
+.slot {
+  width: 36px;
+  height: 46px;
+  border-bottom: 2px solid #ccc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.slot.extra { border-bottom-color: transparent; }
+.ghost { color: #bbb; }       /* 灰色的第一个假名提示 */
+#display.ok { color: #1a8f3c; border-color: #1a8f3c; }
+#display.ok .slot { border-color: #1a8f3c; }
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 28px;
+  background: #4a7dff;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+button {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  font-size: 18px;
+  border: none;
+  border-radius: 8px;
+  background: #4a7dff;
+  color: #fff;
+}
+button.small {
+  background: none;
+  color: #888;
+  font-size: 14px;
+}
+#feedback { min-height: 96px; margin-top: 16px; }
+#kanji { font-size: 36px; margin-top: 4px; }
+#kana { font-size: 20px; color: #555; }
+#feedback.wrong #kanji, #feedback.wrong #kana { color: #d03030; }  /* 没答出来：答案显示成红色 */
+/* 词汇页 */
+h1 { font-size: 22px; margin: 4px 0 16px; }
+#studyInfo { color: #555; margin-bottom: 4px; }
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  background: #fff;
+  color: #222;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 16px;
+}
+.row .main { font-size: 18px; }
+.row .sub { color: #777; font-size: 14px; }
+.row .status { color: #777; font-size: 14px; text-align: right; white-space: nowrap; }
+.row .status.due { color: #d03030; font-weight: 600; }
+#tools { margin-top: 24px; display: flex; }
+#tools button { margin-top: 0; }
+#quit { width: auto; margin: 0; padding: 0 4px; font-size: 24px; line-height: 1; }
+
+/* ---------- 屏幕键盘（模仿 iPhone 键盘） ---------- */
+#quiz { padding-bottom: 250px; }              /* 给固定在底部的键盘留出空间 */
+#keyboard {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 3px calc(8px + env(safe-area-inset-bottom));  /* 避开 iPhone 底部横条 */
+  background: #d1d4da;
+  user-select: none;                   /* 长按不会选中文字 */
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;         /* 长按不会弹出 iPhone 菜单 */
+  touch-action: manipulation;          /* 连点不会放大页面 */
+}
+.key-row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  max-width: 500px;
+  margin: 0 auto 12px;
+}
+.key-row:last-child { margin-bottom: 0; justify-content: flex-end; }  /* 最后一行：Hint 靠右 */
+.key {
+  flex: 0 0 calc((100% - 54px) / 10);  /* 一行 10 个键，9 个间隔 × 6px */
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  font-size: 22px;
+  color: #000;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 0 #898a8d;
+  -webkit-tap-highlight-color: transparent;
+}
+.key.pressed { background: #abb0ba; }  /* 按下：变灰 */
+
+/* 删除键：灰色，1.5 个键宽；按下变白 */
+.key[data-key="Backspace"] { flex-basis: calc((100% - 54px) / 10 * 1.5); background: #abb0ba; }
+.key[data-key="Backspace"].pressed { background: #fff; }
+
+/* Hint 键：在回车的位置，蓝色，2.5 个键宽；按下变深蓝 */
+.key[data-key="Enter"] {
+  flex-basis: calc((100% - 54px) / 10 * 2.5);
+  font-size: 17px;
+  color: #fff;
+  background: #4a7dff;
+}
+.key[data-key="Enter"].pressed { background: #3060d0; }
+
+/* ---------- 密码页 ---------- */
+#lock p { color: #555; }
+#password {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;                     /* 16px 以上，避免 iPhone 自动放大页面 */
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+#lockError { color: #d03030; margin-top: 12px; }
+
+.hidden { display: none; }
+.invisible { visibility: hidden; }

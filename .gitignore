@@ -1,0 +1,6 @@
+# 原图有版权限制：只保存在自己电脑上，GitHub 上只放加密后的 images-enc/
+images/
+# 图片密码
+.image-password
+# Python 缓存
+__pycache__/
