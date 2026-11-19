@@ -107,13 +107,14 @@ The checker checks every field, finds duplicate ids, non-kana characters, missin
 One word per line:
 
 ```json
-{"id": "akeru-to_open", "kana": "あける", "kanji": "開ける", "en": "to open", "note": "他動詞 · 五段", "tags": ["Batch 1", "他動詞"], "retired": false}
+{"id": "akeru-to_open", "kana": "あける", "kanji": "開ける", "en": "to open", "note": "他動詞 · 五段", "tags": ["Batch 1", "他動詞"], "verb": "ichidan", "polite": "開けます", "polite_kana": "あけます", "retired": false}
 ```
 
 - One entry is one meaning of one word. Every field is required.
 - `id`: lowercase letters, digits, `_` and `-`. It is also the picture's file name. **Never change it once published.**
 - `note`: shown in small text under the picture, above the English. Use it for part of speech, 自動詞/他動詞, or nuances English can't express. `""` for none.
 - `tags`: a list of categories. The home page lists every tag, in the order it first appears in the file.
+- `verb`: the verb class, `"godan"` (五段), `"ichidan"` (一段) or `"irregular"` (する, 来る); `false` for words that are not verbs. Conjugation rules depend on the class, so it is needed for future conjugation practice. Verbs also need `polite` and `polite_kana`, the ます form. The answer is shown as 開ける／開けます and both forms are read aloud, but only the plain form counts as a correct answer. If a verb has an audio file, record both forms in it. The checker works out the ます form from the class and warns when it differs, which catches a wrong class or a typo.
 - `retired`: `true` hides the word everywhere. Use it instead of deleting. If a word needs a big change (a different reading or meaning), retire it and add the new version under a new `id`, so it is studied as a new word.
 - The picture must be `images/<id>.jpg` (encrypted to `images-enc/<id>.bin`). An optional recording goes in `audio/<id>.mp3`; without one, the browser's Japanese voice is used.
 - New words are taught in the order they appear in the file.

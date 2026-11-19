@@ -25,26 +25,46 @@ export function unlockSound() {
   soundUnlocked = true;
 }
 
-// 播放读音：有音频文件就放文件，没有就用浏览器的日语语音合成
+const MAX_SOUND_MS = 4000;      // 最多等读音这么久（有的浏览器读完了也不通知）
+
+// 播放读音，返回一个 Promise：读完时完成。
+// 有音频文件就放文件（动词的录音请把原形和敬体都录进去）；
+// 没有就用浏览器的日语语音合成，动词读两遍：原形、敬体
 export function playSound(word) {
-  if (audioFiles.has(word.id)) {
-    new Audio(audioOf(word)).play().catch(() => speak(word.kana));
-  } else {
-    speak(word.kana);
-  }
+  const texts = word.verb ? [word.kana, word.polite_kana] : [word.kana];
+  const playing = audioFiles.has(word.id) ? playFile(word, texts) : speak(texts);
+  const timeout = new Promise((resolve) => setTimeout(resolve, MAX_SOUND_MS));
+  return Promise.race([playing, timeout]);       // 两个里面先完成的那个
 }
 
-function speak(text) {
-  if (!("speechSynthesis" in window)) return;
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "ja-JP";
-  u.rate = 0.9;
-  // 明确选一个日语声音；找不到的话浏览器会用默认声音
-  const voice = speechSynthesis.getVoices().find((v) => v.lang.replace("_", "-").startsWith("ja"));
-  if (voice) u.voice = voice;
-  // 只在正在说话时才取消：部分 Chrome 版本在 cancel() 后紧接着 speak() 会没有声音
-  if (speechSynthesis.speaking) speechSynthesis.cancel();
-  speechSynthesis.speak(u);
+function playFile(word, texts) {
+  return new Promise((resolve) => {
+    const audio = new Audio(audioOf(word));
+    audio.onended = resolve;
+    audio.play().catch(() => speak(texts).then(resolve));   // 放不了就改用语音合成
+  });
+}
+
+// 按顺序读出 texts 里的每一句，全部读完时完成
+function speak(texts) {
+  return new Promise((resolve) => {
+    if (!("speechSynthesis" in window)) return resolve();
+    // 只在正在说话时才取消：部分 Chrome 版本在 cancel() 后紧接着 speak() 会没有声音
+    if (speechSynthesis.speaking) speechSynthesis.cancel();
+    // 明确选一个日语声音；找不到的话浏览器会用默认声音
+    const voice = speechSynthesis.getVoices().find((v) => v.lang.replace("_", "-").startsWith("ja"));
+    texts.forEach((text, i) => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "ja-JP";
+      u.rate = 0.9;
+      if (voice) u.voice = voice;
+      if (i === texts.length - 1) {               // 最后一句读完（或出错）时完成
+        u.onend = resolve;
+        u.onerror = resolve;
+      }
+      speechSynthesis.speak(u);                   // 浏览器会排队，一句读完再读下一句
+    });
+  });
 }
 
 // 有些浏览器的声音列表是延后加载的，先触发一次

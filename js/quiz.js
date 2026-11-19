@@ -22,7 +22,6 @@ let stage = "first";
 let typed = "";        // 已经打出来的字（假名，末尾可能还有没拼完的罗马字，例如 "たb"）
 let started = false;   // 这个词是否已经开始打字（英文缩小上移，出现光标）
 let hintShown = false; // 答题区是否已变成短线
-let nextTimer = null;  // 答对后"停留一秒"的计时器
 
 // ---------- 开始 / 退出 ----------
 export function startGroup() {
@@ -38,7 +37,7 @@ export function startGroup() {
 
 // 中途退出：这一组的进度不保存（日志已经记下的作答会保留）
 export function quitGroup() {
-  clearTimeout(nextTimer);
+  current = null;      // 正在等待的“进入下一个词”看到 current 变了，就不会再执行
 }
 
 function showNext() {
@@ -109,8 +108,12 @@ function onCorrect() {
   stage = "done";
   updateProgress();
   render();
-  showAnswer();
-  nextTimer = setTimeout(showNext, PAUSE_MS);
+  // 读音读完、并且至少停留 PAUSE_MS 之后，进入下一个词
+  const answered = current;
+  const pause = new Promise((resolve) => setTimeout(resolve, PAUSE_MS));
+  Promise.all([showAnswer(), pause]).then(() => {
+    if (current === answered) showNext();      // 期间退出了这一组，就什么都不做
+  });
 }
 
 // 按了 Hint（或回车）
@@ -151,10 +154,13 @@ function updateProgress() {
   el.progressFill.style.width = (cleared / group.length) * 100 + "%";
 }
 
+// 显示答案并朗读。动词显示成 “開ける／開けます”（输入时只需要打原形）
+// 返回读音的 Promise（读完时完成）
 function showAnswer() {
-  el.kanji.textContent = current.word.kanji;
-  el.kana.textContent = current.word.kana;
-  playSound(current.word);
+  const word = current.word;
+  el.kanji.textContent = word.verb ? word.kanji + "／" + word.polite : word.kanji;
+  el.kana.textContent = word.verb ? word.kana + "／" + word.polite_kana : word.kana;
+  return playSound(word);
 }
 
 // 根据当前 stage 和已经打出来的字，重新画一遍答题区

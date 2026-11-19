@@ -2,6 +2,11 @@
 
 Versions follow `major.minor.patch`. Data on friends' phones (progress, study log) must keep working across every version.
 
+## Unreleased
+
+- Every word has `verb`: its class (`godan`, `ichidan`, `irregular`) or `false`. Verbs also have their ます form (`polite`, `polite_kana`). The answer shows 開ける／開けます and reads both forms; only the plain form is accepted as an answer. The next word appears after the reading has finished.
+- Quiz: content below the English word sits higher; Backspace is as wide as Hint and aligned with it.
+
 ## 0.1.1 — 2026-11-19
 
 - Own on-screen romaji keyboard (iPhone layout, with ー and a Hint key); the phone's keyboard and the computer's input method are no longer used. On a computer, the real keyboard works and lights up the on-screen keys.

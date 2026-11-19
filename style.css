@@ -33,7 +33,7 @@ main { width: 100%; max-width: 420px; text-align: center; }
 #en {
   font-size: 28px;
   font-weight: 600;
-  margin: 16px 0;
+  margin: 16px 0 4px;          /* 下边距小一点：英文缩小后，下面的内容离它更近 */
   transform: translateY(40px) scale(1.4);
 }
 .started #en { transform: none; transition: transform 0.25s ease; }
@@ -41,7 +41,7 @@ main { width: 100%; max-width: 420px; text-align: center; }
 /* 答题区：没有真正的输入框，文字由 JS 画出来，所以手机不会弹出自带键盘。
    开始打字前是隐藏的 */
 #display {
-  height: 56px;
+  height: 48px;
   display: flex;
   justify-content: center;
   align-items: flex-end;
@@ -53,7 +53,7 @@ main { width: 100%; max-width: 420px; text-align: center; }
 #display.slots { gap: 8px; }
 .slot {
   width: 36px;
-  height: 46px;
+  height: 42px;
   border-bottom: 2px solid #ccc;
   display: flex;
   justify-content: center;
@@ -87,7 +87,7 @@ button.small {
   color: #888;
   font-size: 14px;
 }
-#feedback { min-height: 96px; margin-top: 16px; }
+#feedback { min-height: 96px; margin-top: 8px; }
 #kanji { font-size: 36px; margin-top: 4px; }
 #kana { font-size: 20px; color: #555; }
 #feedback.wrong #kanji, #feedback.wrong #kana { color: #d03030; }  /* 没答出来：答案显示成红色 */
@@ -131,14 +131,15 @@ h1 { font-size: 22px; margin: 4px 0 16px; }
   -webkit-touch-callout: none;         /* 长按不会弹出 iPhone 菜单 */
   touch-action: manipulation;          /* 连点不会放大页面 */
 }
+/* 每一行都靠右排：前两行正好排满；第三行的删除键和最后一行的 Hint 键右边对齐 */
 .key-row {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 6px;
   max-width: 500px;
   margin: 0 auto 12px;
 }
-.key-row:last-child { margin-bottom: 0; justify-content: flex-end; }  /* 最后一行：Hint 靠右 */
+.key-row:last-child { margin-bottom: 0; }
 .key {
   flex: 0 0 calc((100% - 54px) / 10);  /* 一行 10 个键，9 个间隔 × 6px */
   height: 44px;
@@ -153,13 +154,16 @@ h1 { font-size: 22px; margin: 4px 0 16px; }
 }
 .key.pressed { background: #abb0ba; }  /* 按下：变灰 */
 
-/* 删除键：灰色，1.5 个键宽；按下变白 */
-.key[data-key="Backspace"] { flex-basis: calc((100% - 54px) / 10 * 1.5); background: #abb0ba; }
+/* 删除键和 Hint 键一样宽：2.5 个键宽，上下对齐 */
+.key[data-key="Backspace"],
+.key[data-key="Enter"] { flex-basis: calc((100% - 54px) / 10 * 2.5); }
+
+/* 删除键：灰色；按下变白 */
+.key[data-key="Backspace"] { background: #abb0ba; }
 .key[data-key="Backspace"].pressed { background: #fff; }
 
-/* Hint 键：在回车的位置，蓝色，2.5 个键宽；按下变深蓝 */
+/* Hint 键：在回车的位置，蓝色；按下变深蓝 */
 .key[data-key="Enter"] {
-  flex-basis: calc((100% - 54px) / 10 * 2.5);
   font-size: 17px;
   color: #fff;
   background: #4a7dff;

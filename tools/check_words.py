@@ -22,7 +22,26 @@ IMAGES_DIR = ROOT / "images"            # 原图（只在自己电脑上）
 ENCRYPTED_DIR = ROOT / "images-enc"     # 加密后的图片（提交到 GitHub）
 
 # 每个词必须有的字段，以及它的类型
-FIELDS = {"id": str, "kana": str, "kanji": str, "en": str, "note": str, "tags": list, "retired": bool}
+FIELDS = {"id": str, "kana": str, "kanji": str, "en": str, "note": str, "tags": list,
+          "verb": (str, bool), "retired": bool}
+# verb：动词写类别，不是动词写 false
+VERB_CLASSES = {"godan", "ichidan", "irregular"}   # 五段、一段、不规则（する、来る）
+# 动词还必须有的字段：敬体（ます形）
+VERB_FIELDS = {"polite": str, "polite_kana": str}
+I_ROW = dict(zip("うくぐすつぬぶむる", "いきぎしちにびみり"))   # 五段动词：词尾 う段 → い段
+
+
+def expected_polite(kana, verb_class):
+    """按动词类别推算 ます形的假名；推算不了就返回 None"""
+    if verb_class == "ichidan" and kana.endswith("る"):
+        return kana[:-1] + "ます"                     # 食べる → 食べます
+    if verb_class == "godan" and kana[-1:] in I_ROW:
+        return kana[:-1] + I_ROW[kana[-1]] + "ます"   # 飲む → 飲みます
+    if verb_class == "irregular" and kana.endswith("する"):
+        return kana[:-2] + "します"                   # 勉強する → 勉強します
+    if verb_class == "irregular" and kana.endswith("くる"):
+        return kana[:-2] + "きます"                   # 来る → 来ます
+    return None
 ID_PATTERN = re.compile(r"^[a-z0-9_-]+$")           # id 也是文件名，只用小写字母、数字、_ 和 -
 KANA_PATTERN = re.compile(r"^[ぁ-ゟ゠-ヿ]+$")   # 平假名、片假名（含 ー）
 
@@ -47,14 +66,41 @@ def check(words, published):
             continue
         where = f"{word.get('id', f'第 {number} 个词')}"
 
+        kana = word.get("kana")
+
         # 字段齐全、类型正确
-        for field, kind in FIELDS.items():
+        verb = word.get("verb")
+        is_verb = verb in VERB_CLASSES
+        if "verb" in word and not is_verb and verb is not False:
+            errors.append(f"{where}: verb 必须是 \"godan\"、\"ichidan\"、\"irregular\" 或 false，现在是 {verb!r}")
+        required = {**FIELDS, **VERB_FIELDS} if is_verb else FIELDS
+        for field, kind in required.items():
             if field not in word:
                 errors.append(f"{where}: 缺少字段 {field}")
-            elif not isinstance(word[field], kind):
+            elif field != "verb" and not isinstance(word[field], kind):
                 errors.append(f"{where}: {field} 应该是 {kind.__name__}，现在是 {word[field]!r}")
-        for field in word.keys() - FIELDS.keys():
-            warnings.append(f"{where}: 不认识的字段 {field}（拼错了？）")
+        for field in word.keys() - required.keys():
+            if field in VERB_FIELDS:
+                warnings.append(f"{where}: 不是动词，却有 {field}")
+            else:
+                warnings.append(f"{where}: 不认识的字段 {field}（拼错了？）")
+
+        # 敬体：假名部分只能是假名，并且以 ます 结尾
+        polite_kana = word.get("polite_kana")
+        if is_verb and isinstance(polite_kana, str):
+            if not KANA_PATTERN.match(polite_kana):
+                errors.append(f"{where}: polite_kana 里有假名以外的字符：{polite_kana}")
+            for field in VERB_FIELDS:
+                if isinstance(word.get(field), str) and not word[field].endswith("ます"):
+                    warnings.append(f"{where}: {field} 没有以 ます 结尾：{word[field]}")
+            # 和按类别推算出来的敬体对照（例外的动词会出现警告，确认没错就可以忽略）
+            if isinstance(kana, str):
+                expected = expected_polite(kana, verb)
+                if expected is None:
+                    warnings.append(f"{where}: {kana} 不像 {verb} 动词，请确认类别")
+                elif expected != polite_kana:
+                    warnings.append(f"{where}: 按 {verb} 规则，{kana} 的敬体应该是 {expected}，"
+                                    f"现在是 {polite_kana}。请确认类别和敬体")
 
         word_id = word.get("id")
         if isinstance(word_id, str):
@@ -64,7 +110,6 @@ def check(words, published):
                 errors.append(f"{where}: id 重复")
             ids.add(word_id)
 
-        kana = word.get("kana")
         if isinstance(kana, str) and not KANA_PATTERN.match(kana):
             errors.append(f"{where}: kana 里有假名以外的字符：{kana}")
 
