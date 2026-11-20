@@ -12,9 +12,9 @@ export function make(tag, className, text = "") {
   return node;
 }
 
-// 切换页面：只显示 name 这一页（lock / home / tag / quiz / done）
+// 切换页面：只显示 name 这一页（lock / home / guide / tag / quiz / done）
 export function show(name) {
-  for (const view of ["lock", "home", "tag", "quiz", "done"]) {
+  for (const view of ["lock", "home", "guide", "tag", "quiz", "done"]) {
     el[view].classList.toggle("hidden", view !== name);
   }
 }

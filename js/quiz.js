@@ -4,13 +4,13 @@
 //   "first"    第一次机会：直接打
 //   "hint"     第二次机会：显示字数和第一个假名（已经算错）
 //   "practice" 已揭晓答案，照着再打一遍（只是练习）
-//   "done"     已打对，停留一秒后自动进入下一个词
+//   "done"     已打对，读音读完（至少停留一秒）后自动进入下一个词
 
 import { CORRECT_AFTER_MISS, REPEAT_GAP, PAUSE_MS } from "./config.js";
-import { el, show } from "./ui.js";
+import { el, show, make } from "./ui.js";
 import { imageUrl } from "./images.js";
 import { playSound } from "./sound.js";
-import { pickGroup, nextRecord } from "./schedule.js";
+import { pickGroup, nextRecord, shuffle } from "./schedule.js";
 import { loadProgress, saveProgress, appendLog } from "./storage.js";
 import { setHintVisible } from "./keyboard.js";
 
@@ -24,8 +24,9 @@ let started = false;   // 这个词是否已经开始打字（英文缩小上移
 let hintShown = false; // 答题区是否已变成短线
 
 // ---------- 开始 / 退出 ----------
-export function startGroup() {
-  const picked = pickGroup(loadProgress(), Date.now());
+// tag = 只学这个分类；不写 = 从全部单词里学
+export function startGroup(tag = null) {
+  const picked = pickGroup(loadProgress(), Date.now(), tag);
   group = picked.fresh.concat(picked.review)
     .map((word) => ({ word: word, need: 1, missed: false }));
   queue = shuffle(group);
@@ -159,14 +160,15 @@ function updateProgress() {
 function showAnswer() {
   const word = current.word;
   el.kanji.textContent = word.verb ? word.kanji + "／" + word.polite : word.kanji;
-  el.kana.textContent = word.verb ? word.kana + "／" + word.polite_kana : word.kana;
+  // 只有假名的词（ある、する…）上下两行会一模一样，这时不显示第二行
+  const kana = word.verb ? word.kana + "／" + word.polite_kana : word.kana;
+  el.kana.textContent = kana === el.kanji.textContent ? "" : kana;
   return playSound(word);
 }
 
 // 根据当前 stage 和已经打出来的字，重新画一遍答题区
 function render() {
   const locked = stage === "done";     // 已经打对：变绿、不再有光标
-  const chars = Array.from(typed);
   const answer = Array.from(current.word.kana);
 
   el.quiz.classList.toggle("started", started);
@@ -185,20 +187,24 @@ function render() {
     return;
   }
 
-  // 提示模式：每个假名一条短线，第一格用灰色显示第一个假名
-  const count = Math.max(answer.length, chars.length);
+  // 提示模式：每个假名一条短线。已经拼好的假名各占一格；
+  // 还没拼完的罗马字（例如打 "ka" 时的 "k"）和光标留在当前这一格，拼成假名后才进入下一格
+  const romaji = typed.match(/[a-z]*$/)[0];                    // 末尾还没拼完的罗马字
+  const kana = Array.from(typed.slice(0, typed.length - romaji.length));
+  // 格数 = 答案的假名数；打多了就多出几格（没有短线）。没打对之前，还要留出光标所在的格
+  const count = Math.max(answer.length, kana.length + (locked ? 0 : 1));
   for (let i = 0; i < count; i++) {
     const slot = document.createElement("div");
     slot.className = "slot";
     if (i >= answer.length) slot.classList.add("extra");
 
-    if (i < chars.length) {
-      slot.textContent = chars[i];
-    } else if (i === chars.length && !locked && i > 0) {
+    if (i < kana.length) {
+      slot.textContent = kana[i];
+    } else if (i === kana.length && !locked) {
+      // 当前这一格：正在拼的罗马字 + 光标；第一格什么都没打时，光标后面是灰色的第一个假名
+      if (romaji) slot.append(romaji);
       slot.appendChild(makeCaret());
-    } else if (i === 0) {
-      slot.textContent = answer[0];
-      slot.classList.add("ghost");
+      if (i === 0 && !romaji) slot.appendChild(make("span", "ghost", answer[0]));
     }
     el.display.appendChild(slot);
   }
@@ -214,14 +220,4 @@ function makeCaret() {
 // 把输入和答案都统一成平假名再比较
 function normalize(text) {
   return wanakana.toHiragana(text.trim().toLowerCase());
-}
-
-// 打乱顺序（Fisher–Yates 洗牌），返回新数组
-function shuffle(list) {
-  const a = list.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 }

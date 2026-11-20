@@ -1,20 +1,11 @@
-// 读音
-// 手机浏览器只允许在用户操作（点击、打字）的那一刻开始发声。
-// 所以"用音频文件还是用语音合成"必须当场决定，不能等音频加载失败后再换。
+// 读音：words.json 里 "audio": true 的词播放录音文件 audio/<id>.mp3，其他词用浏览器自带的日语语音合成。
+// 有没有录音写在 words.json 里，所以不用一个个去问服务器“这个文件存不存在”。
+// 手机浏览器只允许在用户操作（点击、打字）的那一刻开始发声，所以点 Study 时要先“解锁”一次
 
-import { words, audioOf } from "./words.js";
+import { audioOf } from "./words.js";
 
-const audioFiles = new Set();   // 确认有音频文件的单词 id
 let soundUnlocked = false;
-
-// 启动时检查哪些音频文件真的存在
-export function checkAudioFiles() {
-  for (const word of words) {
-    fetch(audioOf(word), { method: "HEAD" })
-      .then((response) => { if (response.ok) audioFiles.add(word.id); })
-      .catch(() => {});
-  }
-}
+const MAX_SOUND_MS = 4000;      // 最多等读音这么久（有的浏览器读完了也不通知）
 
 // iPhone 要求第一次发声发生在点击里。点 Study 时先"说"一句静音的话，之后就能正常发声
 export function unlockSound() {
@@ -25,23 +16,21 @@ export function unlockSound() {
   soundUnlocked = true;
 }
 
-const MAX_SOUND_MS = 4000;      // 最多等读音这么久（有的浏览器读完了也不通知）
-
-// 播放读音，返回一个 Promise：读完时完成。
-// 有音频文件就放文件（动词的录音请把原形和敬体都录进去）；
-// 没有就用浏览器的日语语音合成，动词读两遍：原形、敬体
+// 朗读一个词，返回一个 Promise：读完时完成。
+// 有录音就放录音（动词的录音里有原形和敬体两遍）；没有就用合成音，动词读两遍：原形、敬体
 export function playSound(word) {
   const texts = word.verb ? [word.kana, word.polite_kana] : [word.kana];
-  const playing = audioFiles.has(word.id) ? playFile(word, texts) : speak(texts);
+  const playing = word.audio ? playFile(word, texts) : speak(texts);
   const timeout = new Promise((resolve) => setTimeout(resolve, MAX_SOUND_MS));
-  return Promise.race([playing, timeout]);       // 两个里面先完成的那个
+  return Promise.race([playing, timeout]);         // 两个里面先完成的那个
 }
 
+// 播放录音文件；放不了（例如文件出错）就改用合成音
 function playFile(word, texts) {
   return new Promise((resolve) => {
     const audio = new Audio(audioOf(word));
     audio.onended = resolve;
-    audio.play().catch(() => speak(texts).then(resolve));   // 放不了就改用语音合成
+    audio.play().catch(() => speak(texts).then(resolve));
   });
 }
 

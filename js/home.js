@@ -6,16 +6,34 @@ import { words } from "./words.js";
 import { pickGroup } from "./schedule.js";
 import { loadProgress, resetProgress, exportData, importData } from "./storage.js";
 
+// 点 Study 时要做什么（在 main.js 里设置：解锁读音，然后开始一组）。参数 tag = 要学的分类
+let studyHandler = (tag) => {};
+export function onStudy(handler) {
+  studyHandler = handler;
+}
+
 // ---------- 首页 ----------
 export function renderHome() {
   const progress = loadProgress();
   const now = Date.now();
+
+  // 总进度：进度条 + 图例
+  const total = countStatus(words, progress, now);
+  const legend = make("div", "legend");
+  legend.append(
+    makeLegendItem("learned", total.learned + " learned"),
+    makeLegendItem("due", total.due + " to review"),
+    make("span", "", total.all + " words"),
+  );
+  el.overall.innerHTML = "";
+  el.overall.append(makeBar(total), legend);
+
   const picked = pickGroup(progress, now);
   const count = picked.fresh.length + picked.review.length;
 
   if (count > 0) {
     el.studyInfo.textContent =
-      "Next group: " + picked.fresh.length + " new, " + picked.review.length + " review";
+      "Next group: " + picked.fresh.length + " new (random), " + picked.review.length + " review";
     el.study.classList.remove("hidden");
   } else {
     // 没有新词，也没有到期的复习词
@@ -26,25 +44,59 @@ export function renderHome() {
     el.study.classList.add("hidden");
   }
 
-  // 每个分类一行，按在 words.json 里第一次出现的顺序。一个词可以出现在好几个分类里
+  // 每个分类一行：名称、单词总数、自己的 Study 按钮和进度条。点这一行的其他地方 → 单词列表。
+  // 按在 words.json 里第一次出现的顺序。一个词可以出现在好几个分类里
   const tags = [...new Set(words.flatMap((w) => w.tags))];
   el.tagList.innerHTML = "";
   for (const tag of tags) {
-    const list = words.filter((w) => w.tags.includes(tag));
-    const learned = list.filter((w) => progress.words[w.id]);
-    const due = learned.filter((w) => progress.words[w.id].due <= now);
+    const status = countStatus(words.filter((w) => w.tags.includes(tag)), progress, now);
+    const head = make("div", "tag-head");
+    head.append(make("span", "main", tag), make("span", "status", status.all + " words"));
 
-    const row = make("button", "row");
-    row.type = "button";
-    row.append(
-      make("div", "main", tag),
-      make("div", "status", learned.length + " / " + list.length + " learned"
-        + (due.length ? ", " + due.length + " to review" : "")),
-    );
+    // 这个分类现在有新词或到期的复习词，才显示 Study 按钮
+    const tagPicked = pickGroup(progress, now, tag);
+    if (tagPicked.fresh.length + tagPicked.review.length > 0) {
+      const study = make("button", "tag-study", "Study");
+      study.type = "button";
+      study.addEventListener("click", (event) => {
+        event.stopPropagation();               // 不要同时触发整行的点击（打开单词列表）
+        studyHandler(tag);
+      });
+      head.appendChild(study);
+    }
+
+    const row = make("div", "row tag-row");
+    row.append(head, makeBar(status));
     row.addEventListener("click", () => renderTag(tag));
     el.tagList.appendChild(row);
   }
   show("home");
+}
+
+// 数一数 list 里的词：learned = 背会了、还不用复习；due = 到了复习时间；all = 总数
+function countStatus(list, progress, now) {
+  const studied = list.filter((w) => progress.words[w.id]);
+  const due = studied.filter((w) => progress.words[w.id].due <= now).length;
+  return { learned: studied.length - due, due: due, all: list.length };
+}
+
+// 进度条：深色 = learned，浅色 = due，剩下的灰色 = 还没学
+function makeBar(status) {
+  const bar = make("div", "bar");
+  const percent = (n) => (status.all ? (n / status.all) * 100 : 0) + "%";
+  const learned = make("div", "bar-learned");
+  learned.style.width = percent(status.learned);
+  const due = make("div", "bar-due");
+  due.style.width = percent(status.due);
+  bar.append(learned, due);
+  return bar;
+}
+
+// 图例里的一项：色块 + 文字
+function makeLegendItem(kind, text) {
+  const item = make("span", "");
+  item.append(make("span", "dot " + kind), text);
+  return item;
 }
 
 // ---------- 分类页 ----------
@@ -59,7 +111,7 @@ function renderTag(tag) {
 
     const left = make("div", "");
     left.append(
-      make("div", "main", word.kanji + "  " + word.kana),
+      make("div", "main", word.kanji === word.kana ? word.kana : word.kanji + "  " + word.kana),
       make("div", "sub", word.en + (word.note ? " · " + word.note : "")),
     );
     const status = make("div", "status");

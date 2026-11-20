@@ -3,54 +3,52 @@
 A small web app for memorizing Japanese vocabulary on your phone.
 You see a picture and an English meaning, and you type the Japanese word.
 
-## Use it on your phone
+Start with [FRIENDS.md](FRIENDS.md). It is also inside the app: tap **Guide & letters** on the home page.
 
-1. Open the link in your phone's browser: `https://lily-kong.github.io/kotoba-for-friends/`
-2. Add it to your home screen so it opens like an app:
-   - **iPhone (Safari):** Share button → *Add to Home Screen*
-   - **Android (Chrome):** menu (⋮) → *Add to Home screen*
-3. Open it from the home-screen icon and enter the password I gave you (only the first time).
-4. Tap **Study**.
+## Why this project has a guide for friends
 
-You need an internet connection. Your progress is stored on your phone, so **always open the app from the home-screen icon**:
+This app is built for a handful of friends, not for users in general, and that changes what "working well" means.
 
-- On iPhone, the home-screen app and Safari keep **separate** progress, and Safari may delete website data you have not opened for 7 days. The home-screen app is not affected by this.
-- Updates to the app or the word list never delete your progress.
+The study log records *what* happened: which word, what was typed, whether a hint was used. It cannot record *how it felt*: an answer marked wrong that felt right, a picture that pointed to the wrong meaning, a group that was discouraging. Those are often the real reasons someone stops learning, and only the learner can report them.
 
-## How to study
+The app shows the same file on its Guide page (`js/guide.js` renders it with [marked](https://github.com/markedjs/marked)), and marks the button **new** until the latest letter has been read. The numbers from the logs and the feelings from the letters come back together, and the next version is built from both.
 
-- Type the word in **romaji** on the app's own keyboard at the bottom of the screen. It turns into kana as you type (`taberu` → たべる). To type ん, press `n` twice. The ー key types a long vowel. The blue **Hint** key is where Return usually is. Your phone's own keyboard never opens, so it does not cover the page.
-- **On a computer**, just type on your real keyboard; the key lights up on the screen keyboard too. **Enter** = Hint, **Backspace** = delete, **-** = ー. Your computer's Japanese input method is not used, so you can leave it on or off.
-- **If you know the word:** type it. When it is correct, you hear the word and the next one appears after one second.
-- **If you don't know it:** tap **Hint**. You see how many kana the word has, and the first kana.
-- **Still stuck:** tap **Hint** again to see the full word and hear it. Type it once to continue.
+### Writing a new letter
 
-Using a hint counts as a miss. A missed word comes back after two other words, and you must answer it correctly three times before it leaves the group.
+In `FRIENDS.md`, move the current letter down to **Earlier letters** (newest first), and write the new one in its place at the top as `## Letter — YYYY-MM-DD`. The app treats the first heading starting with `## Letter` as the latest letter. Never write anything personal about a friend, and never the picture password or a hint to it: the repository and the site are public.
 
-A group has up to 12 words. It is finished when every word is cleared. If you quit in the middle, the group does not count.
+## How the design evolved
 
-## Review schedule
+The code is small; the interesting part is the decisions behind it. Each one came from a concrete problem met while building and using the app.
 
-When there are words to review, a group is 4 new words and 8 review words. The app decides when each word comes back:
+**Own keyboard, no input field.** On phones the system keyboard covered half the screen, and the input method converted romaji in its own way. The app has no text field at all: an on-screen keyboard and the computer's keys (read by physical position, `event.code`) feed one function, and WanaKana turns romaji into kana. The phone keyboard and the input method never appear, so the layout stays under control.
 
-| What happened | Next review |
-|---|---|
-| New word, correct the first time | in 7 days |
-| Missed | in 24 hours |
-| Correct on review | the interval grows: 1 → 2 → 4 → 7 → 14 → 30 → 60 days |
-| Missed on review | back to 24 hours |
+**Friends' data comes first.** Progress lives only on friends' phones, so every update must keep it readable:
 
-## Word list
+- a word's `id` never changes, and a word is never deleted, only `retired`; a big change means retiring the old word and adding a new `id`;
+- storage keys never change, and formats only grow: old fields are converted when read, never dropped;
+- importing a backup merges (the newest record wins) instead of replacing;
+- the checker compares with the last commit and refuses a word list where a published `id` has disappeared.
 
-The home page shows every category, how many of its words you have learned, and how many are ready for review. A word can be in several categories. Tap a category to see each word and when its next review is.
+**Keep raw events, derive the rest.** The progress record (level, next review) is the output of one particular algorithm. The study log is append-only and keeps every answer as it happened, including what was typed. A future algorithm, or an analysis of a friend's weak words, can be recomputed from the log; the reverse is impossible.
 
-## Back up your progress
+**The data describes itself, so the app never guesses.** The verb class (`godan` / `ichidan` / `irregular`) is stored instead of a `true` flag, because conjugation depends on it. Whether a recording exists is stored as `"audio": true`, instead of asking the server about every word on every start (that was about 200 requests). Picture and recording paths come from the `id`, so they can't drift apart.
 
-Your progress and your study log are saved only in your phone's browser. They are lost if you clear your browser data or change phones.
+**A checker as the gatekeeper.** The word list is edited by hand, hundreds of lines at a time. `tools/check_words.py` runs before every commit: required fields, kana only, the ます form worked out from the verb class, same-English words that can't be told apart, missing or orphaned pictures and recordings, and pictures replaced after encryption (compared by content, because copying a file on Windows keeps its old date). Words still missing a picture go to `missing_images.txt`, ready for searching. The browser keeps only a minimal check: enough to refuse a broken list before it touches anyone's data.
 
-- **Export progress** downloads a file with your progress and your study log. Send this file to me now and then, so I can see which words are hard for you.
-- **Import progress** merges that file into your current data. For each word, the most recent record is kept, so importing an old backup never undoes newer study. Use it to move to a new phone.
-- **Reset** deletes your progress and starts over. Your study log is kept.
+**Copyright: encrypt, don't hide.** The pictures can't be public, but GitHub Pages is. The originals stay on one PC, the repository holds AES-GCM encrypted copies, and friends enter a password once. The history was rewritten so that earlier commits don't contain the originals either.
+
+**One source for words to friends.** `FRIENDS.md` is both a repository document and the in-app guide, so the two can never disagree.
+
+**Small modules, wired in one place.** Each file has one job (`schedule.js` is the review algorithm, `storage.js` the data on the phone, ...), and only `main.js` connects them. Modules don't import each other in circles, and the review algorithm can be replaced by editing one file.
+
+### Known limits and next ideas
+
+- Right after a deploy, a phone can mix cached old and new JS files for a few minutes and show a blank page; reloading fixes it. A small service worker would remove the problem.
+- Logs reach me only when a friend exports them. Cloud sync would close the loop, and append-only logs make merging easy.
+- A "this word confuses me" button in the quiz, written to the log, would tie feelings to specific words.
+- Conjugation practice, built on the stored verb class.
+- A Python script that reads exported logs and lists each friend's hardest words and typical mistakes.
 
 ## For developers
 
@@ -68,12 +66,14 @@ js/keyboard.js       on-screen keyboard and computer keyboard
 js/sound.js          pronunciation
 js/home.js           home page and category pages
 js/images.js         unlocks and decrypts the pictures
+js/guide.js          shows FRIENDS.md inside the app
 tools/check_words.py    checks words.json before you commit
 tools/encrypt_images.py encrypts images/ into images-enc/
 words.json           the word list
+FRIENDS.md           the guide and letters for friends (also shown in the app)
 images/              one picture per word (originals, NOT committed)
 images-enc/          encrypted pictures (committed)
-audio/               one recording per word (optional)
+audio/               recordings, audio/<id>.mp3 (optional; see audio/README.md)
 ```
 
 Run it locally:
@@ -98,6 +98,7 @@ The pictures have copyright restrictions, so the originals in `images/` stay on 
 1. Put the picture in `images/<id>.jpg` and edit `words.json`.
 2. `python tools/encrypt_images.py` (encrypts only new or changed pictures)
 3. `python tools/check_words.py`, and fix every ERROR.
+   Words that still have no picture are listed in `missing_images.txt` (Japanese, English, file name; in list order, not committed).
 4. Commit `words.json` and `images-enc/`.
 
 The checker checks every field, finds duplicate ids, non-kana characters, missing, orphaned or not-yet-encrypted pictures, and words with the same English. It also compares with the last commit and refuses a word list where a committed `id` has disappeared.
@@ -107,17 +108,20 @@ The checker checks every field, finds duplicate ids, non-kana characters, missin
 One word per line:
 
 ```json
-{"id": "akeru-to_open", "kana": "あける", "kanji": "開ける", "en": "to open", "note": "他動詞 · 五段", "tags": ["Batch 1", "他動詞"], "verb": "ichidan", "polite": "開けます", "polite_kana": "あけます", "retired": false}
+{"id": "akeru-to_open", "kana": "あける", "kanji": "開ける", "en": "to open", "note": "(transitive)", "tags": ["Doshi_N5"], "verb": "ichidan", "polite": "開けます", "polite_kana": "あけます", "audio": false, "retired": false}
 ```
 
 - One entry is one meaning of one word. Every field is required.
 - `id`: lowercase letters, digits, `_` and `-`. It is also the picture's file name. **Never change it once published.**
 - `note`: shown in small text under the picture, above the English. Use it for part of speech, 自動詞/他動詞, or nuances English can't express. `""` for none.
-- `tags`: a list of categories. The home page lists every tag, in the order it first appears in the file.
-- `verb`: the verb class, `"godan"` (五段), `"ichidan"` (一段) or `"irregular"` (する, 来る); `false` for words that are not verbs. Conjugation rules depend on the class, so it is needed for future conjugation practice. Verbs also need `polite` and `polite_kana`, the ます form. The answer is shown as 開ける／開けます and both forms are read aloud, but only the plain form counts as a correct answer. If a verb has an audio file, record both forms in it. The checker works out the ます form from the class and warns when it differs, which catches a wrong class or a typo.
+- `tags`: a list of categories. The home page lists every tag, in the order it first appears in the file. Verbs are in `Doshi_N5` (common JLPT N5 verbs) or `Doshi_hoka` (all others).
+- Spelling follows common JLPT word lists (e.g. なる, できる, 出かける in kana where JLPT lists use kana).
+- Words with the same `en` must each have a different `note` (e.g. `(transitive)` / `(intransitive)`, `(shirt, coat)` / `(shoes, trousers)`), otherwise friends can't tell which one to type.
+- `verb`: the verb class, `"godan"` (五段), `"ichidan"` (一段) or `"irregular"` (する, 来る); `false` for words that are not verbs. Conjugation rules depend on the class, so it is needed for future conjugation practice. Verbs also need `polite` and `polite_kana`, the ます form. The answer is shown as 開ける／開けます and both forms are read aloud, but only the plain form counts as a correct answer. The checker works out the ます form from the class and warns when it differs, which catches a wrong class or a typo.
 - `retired`: `true` hides the word everywhere. Use it instead of deleting. If a word needs a big change (a different reading or meaning), retire it and add the new version under a new `id`, so it is studied as a new word.
-- The picture must be `images/<id>.jpg` (encrypted to `images-enc/<id>.bin`). An optional recording goes in `audio/<id>.mp3`; without one, the browser's Japanese voice is used.
-- New words are taught in the order they appear in the file.
+- `audio`: `true` when `audio/<id>.mp3` exists (for verbs, record the plain form and then the ます form). The app plays the recording for these words and uses the browser's Japanese voice for the rest. Because this is written in `words.json`, the app never has to ask the server whether a recording exists.
+- The picture must be `images/<id>.jpg` (encrypted to `images-enc/<id>.bin`).
+- **Study all words** picks new words at random; a category's own **Study** button takes them in the order they appear in the file, so keep pairs (開く／開ける) next to each other.
 
 ### Data on each phone
 
@@ -129,6 +133,7 @@ Each friend's data lives in their browser's `localStorage` (see `js/storage.js`)
 | `kotoba-log-v1` | study log: every answer | **append-only**, never edited or deleted |
 | `kotoba-user` | random user id, e.g. `u_8f3a2k1x` | created once |
 | `kotoba-image-password` | the picture password | saved when entered |
+| `kotoba-letter-read` | title of the latest letter this phone has read | when the guide is opened |
 
 A study log entry (practice typing after the answer is shown is not logged):
 
@@ -147,4 +152,4 @@ Rules that keep the data usable:
 
 After a deploy, a phone may keep using cached copies of `index.html`, `style.css` and `js/` for up to 10 minutes. If something looks broken right after a deploy, reload the page.
 
-Romaji input uses [WanaKana](https://github.com/WaniKani/WanaKana) (MIT license).
+Romaji input uses [WanaKana](https://github.com/WaniKani/WanaKana) and the guide uses [marked](https://github.com/markedjs/marked) (both MIT license).

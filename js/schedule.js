@@ -5,12 +5,16 @@ import { GROUP_SIZE, NEW_PER_GROUP, INTERVAL_DAYS, FIRST_CORRECT_LEVEL, DAY_MS }
 import { words } from "./words.js";
 
 // 选出一组单词：{ fresh: 新词列表, review: 复习词列表 }
-export function pickGroup(progress, now) {
-  // 新词：还没学过的，按 words.json 里的顺序
-  const fresh = words.filter((w) => !progress.words[w.id]);
+// tag = 只学这个分类（首页每个分类的 Study 按钮）；不写 tag = 从全部单词里学（首页上方的 Study 按钮）
+export function pickGroup(progress, now, tag = null) {
+  const pool = tag ? words.filter((w) => w.tags.includes(tag)) : words;
+
+  // 新词：还没学过的。学全部单词时随机挑；学一个分类时按 words.json 里的顺序（成对的词会挨在一起）
+  const unseen = pool.filter((w) => !progress.words[w.id]);
+  const fresh = tag ? unseen : shuffle(unseen);
 
   // 复习词：已经到复习时间的，过期最久的排最前
-  const review = words
+  const review = pool
     .filter((w) => progress.words[w.id] && progress.words[w.id].due <= now)
     .sort((a, b) => progress.words[a.id].due - progress.words[b.id].due);
 
@@ -22,6 +26,16 @@ export function pickGroup(progress, now) {
     fresh: fresh.slice(0, newCount),
     review: review.slice(0, reviewCount),
   };
+}
+
+// 打乱顺序（Fisher–Yates 洗牌），返回新数组，原数组不变
+export function shuffle(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 // 学完一组后，算出一个词新的进度记录

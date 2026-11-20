@@ -14,25 +14,34 @@ import json
 import re
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent      # 项目根目录
 WORDS_FILE = ROOT / "words.json"
 IMAGES_DIR = ROOT / "images"            # 原图（只在自己电脑上）
 ENCRYPTED_DIR = ROOT / "images-enc"     # 加密后的图片（提交到 GitHub）
+AUDIO_DIR = ROOT / "audio"              # 录音（"audio": true 的词才有）
+MISSING_FILE = ROOT / "missing_images.txt"  # 还没有图片的词（每次检查时重新生成，不提交）
 
 # 每个词必须有的字段，以及它的类型
 FIELDS = {"id": str, "kana": str, "kanji": str, "en": str, "note": str, "tags": list,
-          "verb": (str, bool), "retired": bool}
+          "verb": (str, bool), "audio": bool, "retired": bool}
 # verb：动词写类别，不是动词写 false
 VERB_CLASSES = {"godan", "ichidan", "irregular"}   # 五段、一段、不规则（する、来る）
 # 动词还必须有的字段：敬体（ます形）
 VERB_FIELDS = {"polite": str, "polite_kana": str}
 I_ROW = dict(zip("うくぐすつぬぶむる", "いきぎしちにびみり"))   # 五段动词：词尾 う段 → い段
+# 五段动词里的例外：敬体是 ～います，不是 ～ります
+HONORIFIC_ARU = ("いらっしゃる", "おっしゃる", "なさる", "くださる", "ござる")
+ID_PATTERN = re.compile(r"^[a-z0-9_-]+$")           # id 也是文件名，只用小写字母、数字、_ 和 -
+KANA_PATTERN = re.compile(r"^[ぁ-ゟ゠-ヿ]+$")         # 平假名、片假名（含 ー）
 
 
 def expected_polite(kana, verb_class):
     """按动词类别推算 ます形的假名；推算不了就返回 None"""
+    if verb_class == "godan" and kana.endswith(HONORIFIC_ARU):
+        return kana[:-1] + "います"                   # いらっしゃる → いらっしゃいます
     if verb_class == "ichidan" and kana.endswith("る"):
         return kana[:-1] + "ます"                     # 食べる → 食べます
     if verb_class == "godan" and kana[-1:] in I_ROW:
@@ -42,8 +51,34 @@ def expected_polite(kana, verb_class):
     if verb_class == "irregular" and kana.endswith("くる"):
         return kana[:-2] + "きます"                   # 来る → 来ます
     return None
-ID_PATTERN = re.compile(r"^[a-z0-9_-]+$")           # id 也是文件名，只用小写字母、数字、_ 和 -
-KANA_PATTERN = re.compile(r"^[ぁ-ゟ゠-ヿ]+$")   # 平假名、片假名（含 ー）
+
+
+_key = None   # 图片密钥（第一次用到时才计算）；False = 算不出来
+
+
+def encryption_key():
+    """用 .image-password 算出图片密钥；没有密码文件或没装 cryptography 时返回 None"""
+    global _key
+    if _key is None:
+        try:
+            import encrypt_images                          # 同一个文件夹里的加密脚本
+            password = encrypt_images.PASSWORD_FILE.read_text(encoding="utf-8").strip()
+            _key = encrypt_images.load_key(password)       # 密码不对时它会 sys.exit
+        except (ImportError, OSError, SystemExit):
+            _key = False
+    return _key or None
+
+
+def encrypted_is_current(image, encrypted):
+    """加密图片是否和现在的原图一致。
+    有密码时：解密后逐字节比较（替换过同名图片也能发现）；没有密码时：只能比较修改时间"""
+    if not encrypted.exists():
+        return False
+    key = encryption_key()
+    if key is None:
+        return encrypted.stat().st_mtime >= image.stat().st_mtime
+    import encrypt_images
+    return encrypt_images.is_up_to_date(key, image, encrypted)
 
 
 def load_published():
@@ -56,9 +91,10 @@ def load_published():
 
 
 def check(words, published):
-    errors, warnings = [], []
+    """返回 (errors, warnings, missing)；missing = 还没有图片的在用单词（按 words.json 里的顺序）"""
+    errors, warnings, missing = [], [], []
     ids = set()
-    en_owner = {}          # 英文释义 → 第一个用它的 id（只看在用的词）
+    en_groups = {}         # 英文释义 → [(id, note), ...]（只看在用的词）
 
     for number, word in enumerate(words, start=1):
         if not isinstance(word, dict):
@@ -127,20 +163,44 @@ def check(words, published):
             image = IMAGES_DIR / f"{word_id}.jpg"
             encrypted = ENCRYPTED_DIR / f"{word_id}.bin"
             if not image.exists():
-                errors.append(f"{where}: 找不到图片 images/{word_id}.jpg")
-            elif not encrypted.exists() or encrypted.stat().st_mtime < image.stat().st_mtime:
-                errors.append(f"{where}: 加密图片不存在或比原图旧，请运行 python tools/encrypt_images.py")
+                missing.append(word)                 # 不逐个报错，最后汇总成一行，详细列表写进文件
+            elif not encrypted_is_current(image, encrypted):
+                errors.append(f"{where}: 加密图片不存在，或者和原图不一样（换过图片？），请运行 python tools/encrypt_images.py")
+        # 录音：标了 true 就必须有文件；有文件却还是 false，提醒改成 true（否则不会播放）
+        if isinstance(word_id, str):
+            has_file = (AUDIO_DIR / f"{word_id}.mp3").exists()
+            if word.get("audio") is True and not has_file:
+                errors.append(f"{where}: \"audio\": true，但找不到 audio/{word_id}.mp3")
+            elif word.get("audio") is False and has_file:
+                warnings.append(f"{where}: 有录音 audio/{word_id}.mp3，把 \"audio\" 改成 true 才会播放")
         en = word.get("en")
         if isinstance(en, str):
-            if en in en_owner:
-                warnings.append(f"{where}: 英文释义 \"{en}\" 和 {en_owner[en]} 一样，学的时候分不清。可以用 note 区分")
-            else:
-                en_owner[en] = word_id
+            en_groups.setdefault(en, []).append((word_id, word.get("note", "")))
 
-    # 没有对应单词的图片
+    # 英文释义相同的词：学的时候只看到英文和 note，所以每个都要有自己独特的 note
+    for en, group in en_groups.items():
+        if len(group) < 2:
+            continue
+        notes = [note for _, note in group]
+        others = "、".join(word_id for word_id, _ in group)
+        for word_id, note in group:
+            if not note:
+                warnings.append(f"{word_id}: 英文 \"{en}\" 有 {len(group)} 个词（{others}），这个没有 note，学的时候分不清")
+            elif notes.count(note) > 1:
+                warnings.append(f"{word_id}: 英文 \"{en}\" 有 {len(group)} 个词（{others}），note \"{note}\" 也一样，分不清")
+
+    # 没有对应单词的图片（例如文件名打错了）
     for image in sorted(IMAGES_DIR.glob("*.jpg")):
         if image.stem not in ids:
             warnings.append(f"images/{image.name}: 没有对应的单词")
+    # 没有对应单词的加密图片（例如改了原图的文件名，旧名字的加密文件还留着）：会被一起推送，应该删掉
+    for blob in sorted(ENCRYPTED_DIR.glob("*.bin")):
+        if blob.stem not in ids:
+            warnings.append(f"images-enc/{blob.name}: 没有对应的单词，请删除")
+    # 没有对应单词的录音（例如文件名打错了）
+    for recording in sorted(AUDIO_DIR.glob("*.mp3")):
+        if recording.stem not in ids:
+            warnings.append(f"audio/{recording.name}: 没有对应的单词")
 
     # 和上一次提交比较
     current = {w.get("id"): w for w in words if isinstance(w, dict)}
@@ -152,7 +212,48 @@ def check(words, published):
             warnings.append(f"{old_id}: kana 从 {old.get('kana')} 改成了 {current[old_id].get('kana')}。"
                             f"如果是大改，请退役这个词，再用新 id 添加")
 
-    return errors, warnings
+    if missing:
+        errors.append(f"{len(missing)} 个在用的词还没有图片，列表见 {MISSING_FILE.name}")
+    return errors, warnings, missing
+
+
+def write_missing_list(missing):
+    """把没有图片的词写进 missing_images.txt（不提交）；全部都有图片时删掉这个文件"""
+    if not missing:
+        MISSING_FILE.unlink(missing_ok=True)
+        return
+    rows = [("#", "日语", "英文", "文件名")]
+    for number, word in enumerate(missing, start=1):
+        japanese = word.get("kanji", "") + (" " + word["note"] if word.get("note") else "")
+        rows.append((str(number), japanese, word.get("en", ""), f"{word.get('id')}.jpg"))
+
+    # 每一列的宽度 = 这一列里最宽的内容；用空格补齐（不用 Tab，Tab 遇到汉字会对不齐）
+    widths = [max(display_width(row[i]) for row in rows) for i in range(len(rows[0]))]
+    def format_row(row):
+        number, *rest = row
+        cells = [number.rjust(widths[0])]                    # 序号靠右对齐
+        cells += [pad(cell, width) for cell, width in zip(rest, widths[1:])]
+        return "   ".join(cells).rstrip()
+
+    lines = [
+        f"还没有图片的词：{len(missing)} 个（按 words.json 里的顺序）",
+        "找到后保存为 images/<文件名>，再运行 python tools/encrypt_images.py",
+        "",
+        format_row(rows[0]),
+        "-" * display_width(format_row(rows[0])),
+        *[format_row(row) for row in rows[1:]],
+    ]
+    MISSING_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def display_width(text):
+    """在等宽字体里占几格：汉字、假名等全角字符算 2 格，其他算 1 格"""
+    return sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in text)
+
+
+def pad(text, width):
+    """在右边补空格，让 text 占满 width 格"""
+    return text + " " * (width - display_width(text))
 
 
 def main():
@@ -166,7 +267,8 @@ def main():
         print("ERROR words.json 最外层必须是一个列表 [ ... ]")
         return 1
 
-    errors, warnings = check(words, load_published())
+    errors, warnings, missing = check(words, load_published())
+    write_missing_list(missing)
     for message in warnings:
         print("WARN ", message)
     for message in errors:

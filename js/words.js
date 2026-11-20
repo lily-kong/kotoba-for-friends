@@ -4,7 +4,7 @@
 // 用 const 数组 + push 填进去，其他模块 import 之后拿到的就是同一个数组（和 Python 模块里的 list 一样）
 export const words = [];
 
-// 音频的路径由 id 决定，words.json 里不用写（图片见 images.js）
+// 录音文件的路径由 id 决定（只有 "audio": true 的词才有录音）
 export function audioOf(word) { return "audio/" + word.id + ".mp3"; }
 
 // 读取词表。async 函数和 Python 的 async def 类似：await 会等网络请求完成再往下走
@@ -24,7 +24,7 @@ function checkWords(list) {
   const seen = new Set();
   for (const word of list) {
     if (!word.id || !word.kana) return "A word has no id or kana: " + JSON.stringify(word);
-    if (!Array.isArray(word.tags)) return "tags must be a list, like [\"Batch 1\"]: " + word.id;
+    if (!Array.isArray(word.tags)) return "tags must be a list, like [\"Doshi_N5\"]: " + word.id;
     if (seen.has(word.id)) return "Duplicate id: " + word.id;
     seen.add(word.id);
   }

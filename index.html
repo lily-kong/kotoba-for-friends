@@ -20,8 +20,10 @@
   <!-- 首页：全部词汇 -->
   <div id="home" class="hidden">
     <h1>Kotoba</h1>
+    <button id="guideBtn" type="button" class="small">💌 Guide &amp; letters 🌸<span id="guideNew" class="badge hidden">new</span></button>
+    <div id="overall"></div>
     <div id="studyInfo"></div>
-    <button id="study" type="button">Study</button>
+    <button id="study" type="button">Study all words</button>
     <div id="tagList"></div>
     <div id="tools">
       <button id="exportBtn" type="button" class="small">Export progress</button>
@@ -36,6 +38,12 @@
     <button id="back" type="button" class="small">&larr; Back</button>
     <h1 id="tagTitle"></h1>
     <div id="wordList"></div>
+  </div>
+
+  <!-- 写给朋友的指南（内容来自 FRIENDS.md，由 js/guide.js 显示） -->
+  <div id="guide" class="hidden">
+    <button id="guideBack" type="button" class="small">&larr; Back</button>
+    <article id="guideContent"></article>
   </div>
 
   <!-- 答题 -->
@@ -64,6 +72,8 @@
 
 <!-- WanaKana：把罗马字转换成假名。加载后提供全局变量 wanakana -->
 <script src="https://unpkg.com/wanakana@5.3.1"></script>
+<!-- marked：把 FRIENDS.md（Markdown）转成网页。加载后提供全局变量 marked -->
+<script src="https://unpkg.com/marked@12.0.2/marked.min.js"></script>
 <!-- 程序入口。type="module" 让 JS 文件之间可以 import，和 Python 的 import 类似 -->
 <script type="module" src="js/main.js"></script>
 </body>

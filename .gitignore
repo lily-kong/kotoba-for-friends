@@ -4,3 +4,8 @@ images/
 .image-password
 # Python 缓存
 __pycache__/
+# 还没有图片的词：每次运行 tools/check_words.py 时重新生成
+missing_images.txt
+# Windows 自动生成的系统文件
+desktop.ini
+Thumbs.db

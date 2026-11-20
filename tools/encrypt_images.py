@@ -4,7 +4,7 @@
 
 在项目根目录运行：
 
-    python tools/encrypt_images.py            只加密新增或改过的图片
+    python tools/encrypt_images.py            只加密新增或改过的图片（包括替换过的同名图片）
     python tools/encrypt_images.py --all      全部重新加密（改了密码之后用）
     python tools/encrypt_images.py --restore  从 images-enc/ 解密还原出原图（例如换了电脑）
 
@@ -48,6 +48,16 @@ def encrypt(key, data):
 
 def decrypt(key, blob):
     return AESGCM(key).decrypt(blob[:12], blob[12:], None)   # 密钥不对会抛出 InvalidTag
+
+
+def is_up_to_date(key, image, target):
+    """加密文件存在，并且解密出来和现在的原图一模一样（替换过同名图片就会不一样）"""
+    if not target.exists():
+        return False
+    try:
+        return decrypt(key, target.read_bytes()) == image.read_bytes()
+    except InvalidTag:                                  # 用别的密码加密的，也算需要重新加密
+        return False
 
 
 def get_password():
@@ -108,8 +118,10 @@ def main():
     count = 0
     for image in sorted(SRC.glob("*.jpg")):
         target = OUT / f"{image.stem}.bin"
-        # 加密结果每次都不一样（nonce 是随机的），所以没改过的图片不重新加密，免得 git 里每次都有改动
-        if not args.all and target.exists() and target.stat().st_mtime >= image.stat().st_mtime:
+        # 加密结果每次都不一样（nonce 是随机的），所以没改过的图片不重新加密，免得 git 里每次都有改动。
+        # 判断“改没改过”是把加密文件解密后和原图逐字节比较，不看修改时间
+        # （Windows 里复制文件会保留旧的修改时间，只看时间会漏掉替换过的同名图片）
+        if not args.all and is_up_to_date(key, image, target):
             continue
         target.write_bytes(encrypt(key, image.read_bytes()))
         count += 1
