@@ -69,11 +69,15 @@ js/images.js         unlocks and decrypts the pictures
 js/guide.js          shows FRIENDS.md inside the app
 tools/check_words.py    checks words.json before you commit
 tools/encrypt_images.py encrypts images/ into images-enc/
+tools/make_audio.py     makes recordings with VOICEVOX (see audio/README.md)
+tools/voice.json        VOICEVOX voice and settings
+tools/audio_fixes.json  hand-corrected readings and pitch accents for recordings
+tools/audio_manifest.json  which text, fix and settings made each recording
 words.json           the word list
 FRIENDS.md           the guide and letters for friends (also shown in the app)
 images/              one picture per word (originals, NOT committed)
 images-enc/          encrypted pictures (committed)
-audio/               recordings, audio/<id>.mp3 (optional; see audio/README.md)
+audio/               recordings, audio/<id>.mp3, made with VOICEVOX (see audio/README.md)
 ```
 
 Run it locally:
@@ -119,7 +123,7 @@ One word per line:
 - Words with the same `en` must each have a different `note` (e.g. `(transitive)` / `(intransitive)`, `(shirt, coat)` / `(shoes, trousers)`), otherwise friends can't tell which one to type.
 - `verb`: the verb class, `"godan"` (五段), `"ichidan"` (一段) or `"irregular"` (する, 来る); `false` for words that are not verbs. Conjugation rules depend on the class, so it is needed for future conjugation practice. Verbs also need `polite` and `polite_kana`, the ます form. The answer is shown as 開ける／開けます and both forms are read aloud, but only the plain form counts as a correct answer. The checker works out the ます form from the class and warns when it differs, which catches a wrong class or a typo.
 - `retired`: `true` hides the word everywhere. Use it instead of deleting. If a word needs a big change (a different reading or meaning), retire it and add the new version under a new `id`, so it is studied as a new word.
-- `audio`: `true` when `audio/<id>.mp3` exists (for verbs, record the plain form and then the ます form). The app plays the recording for these words and uses the browser's Japanese voice for the rest. Because this is written in `words.json`, the app never has to ask the server whether a recording exists.
+- `audio`: `true` when `audio/<id>.mp3` exists (made by `tools/make_audio.py`; verbs contain the plain form, then the ます form). The app plays the recording for these words and uses the browser's Japanese voice for the rest. Because this is written in `words.json`, the app never has to ask the server whether a recording exists.
 - The picture must be `images/<id>.jpg` (encrypted to `images-enc/<id>.bin`).
 - **Study all words** picks new words at random; a category's own **Study** button takes them in the order they appear in the file, so keep pairs (開く／開ける) next to each other.
 
@@ -152,4 +156,4 @@ Rules that keep the data usable:
 
 After a deploy, a phone may keep using cached copies of `index.html`, `style.css` and `js/` for up to 10 minutes. If something looks broken right after a deploy, reload the page.
 
-Romaji input uses [WanaKana](https://github.com/WaniKani/WanaKana) and the guide uses [marked](https://github.com/markedjs/marked) (both MIT license).
+Romaji input uses [WanaKana](https://github.com/WaniKani/WanaKana) and the guide uses [marked](https://github.com/markedjs/marked) (both MIT license). Recordings: VOICEVOX:四国めたん.

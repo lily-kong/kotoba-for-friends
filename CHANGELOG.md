@@ -2,6 +2,12 @@
 
 Versions follow `major.minor.patch`. Data on friends' phones (progress, study log) must keep working across every version.
 
+## 0.2.1 — 2026-11-21
+
+- Every word now has a recording made with VOICEVOX (四国めたん): the plain form, then the ます form. Readings were checked automatically against `kana` and pitch accents by ear; 7 words needed a corrected reading.
+- `tools/make_audio.py`: makes drafts with VOICEVOX from the kanji, compares VOICEVOX's reading with `kana` (wrong readings can't be published), writes a review page for listening, applies hand corrections from `tools/audio_fixes.json`, and publishes MP3s with `--approve`. `tools/audio_manifest.json` records the text, fix and settings behind each recording, so only changed words are made again. It picks up where it left off if VOICEVOX stops.
+- VOICEVOX credit in the guide and the README.
+
 ## 0.2.0 — 2026-11-20
 
 - Every word has `verb`: its class (`godan`, `ichidan`, `irregular`) or `false`. Verbs also have their ます form (`polite`, `polite_kana`). The answer shows 開ける／開けます and reads both forms; only the plain form is accepted as an answer. The next word appears after the reading has finished.

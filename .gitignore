@@ -9,3 +9,5 @@ missing_images.txt
 # Windows 自动生成的系统文件
 desktop.ini
 Thumbs.db
+# 录音草稿：tools/make_audio.py 生成，试听确认后才转成 MP3 放进 audio/
+audio_draft/
