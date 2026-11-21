@@ -11,3 +11,5 @@ desktop.ini
 Thumbs.db
 # 录音草稿：tools/make_audio.py 生成，试听确认后才转成 MP3 放进 audio/
 audio_draft/
+# Azure 语音的密钥（tools/make_audio.py 用）
+.tts-keys.json

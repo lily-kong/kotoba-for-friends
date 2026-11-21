@@ -17,38 +17,9 @@ The app shows the same file on its Guide page (`js/guide.js` renders it with [ma
 
 In `FRIENDS.md`, move the current letter down to **Earlier letters** (newest first), and write the new one in its place at the top as `## Letter — YYYY-MM-DD`. The app treats the first heading starting with `## Letter` as the latest letter. Never write anything personal about a friend, and never the picture password or a hint to it: the repository and the site are public.
 
-## How the design evolved
+## Development log
 
-The code is small; the interesting part is the decisions behind it. Each one came from a concrete problem met while building and using the app.
-
-**Own keyboard, no input field.** On phones the system keyboard covered half the screen, and the input method converted romaji in its own way. The app has no text field at all: an on-screen keyboard and the computer's keys (read by physical position, `event.code`) feed one function, and WanaKana turns romaji into kana. The phone keyboard and the input method never appear, so the layout stays under control.
-
-**Friends' data comes first.** Progress lives only on friends' phones, so every update must keep it readable:
-
-- a word's `id` never changes, and a word is never deleted, only `retired`; a big change means retiring the old word and adding a new `id`;
-- storage keys never change, and formats only grow: old fields are converted when read, never dropped;
-- importing a backup merges (the newest record wins) instead of replacing;
-- the checker compares with the last commit and refuses a word list where a published `id` has disappeared.
-
-**Keep raw events, derive the rest.** The progress record (level, next review) is the output of one particular algorithm. The study log is append-only and keeps every answer as it happened, including what was typed. A future algorithm, or an analysis of a friend's weak words, can be recomputed from the log; the reverse is impossible.
-
-**The data describes itself, so the app never guesses.** The verb class (`godan` / `ichidan` / `irregular`) is stored instead of a `true` flag, because conjugation depends on it. Whether a recording exists is stored as `"audio": true`, instead of asking the server about every word on every start (that was about 200 requests). Picture and recording paths come from the `id`, so they can't drift apart.
-
-**A checker as the gatekeeper.** The word list is edited by hand, hundreds of lines at a time. `tools/check_words.py` runs before every commit: required fields, kana only, the ます form worked out from the verb class, same-English words that can't be told apart, missing or orphaned pictures and recordings, and pictures replaced after encryption (compared by content, because copying a file on Windows keeps its old date). Words still missing a picture go to `missing_images.txt`, ready for searching. The browser keeps only a minimal check: enough to refuse a broken list before it touches anyone's data.
-
-**Copyright: encrypt, don't hide.** The pictures can't be public, but GitHub Pages is. The originals stay on one PC, the repository holds AES-GCM encrypted copies, and friends enter a password once. The history was rewritten so that earlier commits don't contain the originals either.
-
-**One source for words to friends.** `FRIENDS.md` is both a repository document and the in-app guide, so the two can never disagree.
-
-**Small modules, wired in one place.** Each file has one job (`schedule.js` is the review algorithm, `storage.js` the data on the phone, ...), and only `main.js` connects them. Modules don't import each other in circles, and the review algorithm can be replaced by editing one file.
-
-### Known limits and next ideas
-
-- Right after a deploy, a phone can mix cached old and new JS files for a few minutes and show a blank page; reloading fixes it. A small service worker would remove the problem.
-- Logs reach me only when a friend exports them. Cloud sync would close the loop, and append-only logs make merging easy.
-- A "this word confuses me" button in the quiz, written to the log, would tie feelings to specific words.
-- Conjugation practice, built on the stored verb class.
-- A Python script that reads exported logs and lists each friend's hardest words and typical mistakes.
+Most of the code was written with an AI coding assistant; the decisions, the design and the feedback behind it are recorded in [DEVLOG.md](DEVLOG.md), from the MVP to now, together with open questions and next ideas.
 
 ## For developers
 
@@ -69,15 +40,16 @@ js/images.js         unlocks and decrypts the pictures
 js/guide.js          shows FRIENDS.md inside the app
 tools/check_words.py    checks words.json before you commit
 tools/encrypt_images.py encrypts images/ into images-enc/
-tools/make_audio.py     makes recordings with VOICEVOX (see audio/README.md)
-tools/voice.json        VOICEVOX voice and settings
+tools/make_audio.py     makes recordings: VOICEVOX checks the reading and pitch, Azure speaks (see audio/README.md)
+tools/voice.json        which engine (Azure or VOICEVOX), voice and settings
 tools/audio_fixes.json  hand-corrected readings and pitch accents for recordings
 tools/audio_manifest.json  which text, fix and settings made each recording
 words.json           the word list
+DEVLOG.md            why the project is built this way, version by version
 FRIENDS.md           the guide and letters for friends (also shown in the app)
 images/              one picture per word (originals, NOT committed)
 images-enc/          encrypted pictures (committed)
-audio/               recordings, audio/<id>.mp3, made with VOICEVOX (see audio/README.md)
+audio/               recordings, audio/<id>.mp3 (see audio/README.md)
 ```
 
 Run it locally:
@@ -156,4 +128,4 @@ Rules that keep the data usable:
 
 After a deploy, a phone may keep using cached copies of `index.html`, `style.css` and `js/` for up to 10 minutes. If something looks broken right after a deploy, reload the page.
 
-Romaji input uses [WanaKana](https://github.com/WaniKani/WanaKana) and the guide uses [marked](https://github.com/markedjs/marked) (both MIT license). Recordings: VOICEVOX:四国めたん.
+Romaji input uses [WanaKana](https://github.com/WaniKani/WanaKana) and the guide uses [marked](https://github.com/markedjs/marked) (both MIT license). Recordings: synthetic voice by Microsoft Azure AI Speech (ja-JP-NanamiNeural); readings and pitch accents analysed with VOICEVOX.

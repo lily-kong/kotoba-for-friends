@@ -2,6 +2,12 @@
 
 Versions follow `major.minor.patch`. Data on friends' phones (progress, study log) must keep working across every version.
 
+## 0.2.2 — 2026-11-22
+
+- Recordings now use Microsoft Azure's synthetic voice ja-JP-NanamiNeural, which sounds more natural. VOICEVOX still works out each reading and pitch accent (and the automatic reading check and hand corrections still apply); Azure is told exactly how to read each word with SSML `<phoneme>`, so it can't misread kanji like 開く.
+- `tools/make_audio.py`: `"engine"` in `tools/voice.json` chooses Azure or VOICEVOX for the voice; switching back to VOICEVOX recognises the recordings it made before.
+- `DEVLOG.md`: the decisions and feedback behind every version since the MVP; the design notes and open ideas moved there from the README.
+
 ## 0.2.1 — 2026-11-21
 
 - Every word now has a recording made with VOICEVOX (四国めたん): the plain form, then the ます form. Readings were checked automatically against `kana` and pitch accents by ear; 7 words needed a corrected reading.
