@@ -70,14 +70,17 @@ function mergeProgress(a, b) {
 //  "hint": false, "time": "2026-11-18T13:05:00+09:00"}
 // correct = 这次是否打对；answer = 这次打出来的字（没打完的罗马字也会留着，例如 "いk"）
 // hint = 是否是在看到提示（字数和第一个假名）之后作答
+// near = true：只差长音或浊音的小错（例如 とおる 打成 とる）。只有这种记录才有这个字段
 export function loadLog() {
   const log = read(LOG_KEY, []);
   return Array.isArray(log) ? log : [];
 }
 
-export function appendLog(word, correct, answer, hint) {
+export function appendLog(word, correct, answer, hint, near = false) {
   const log = loadLog();
-  log.push({ user: getUser(), word: word.id, correct: correct, answer: answer, hint: hint, time: localTime() });
+  const entry = { user: getUser(), word: word.id, correct: correct, answer: answer, hint: hint, time: localTime() };
+  if (near) entry.near = true;
+  log.push(entry);
   write(LOG_KEY, log);
 }
 

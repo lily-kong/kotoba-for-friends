@@ -18,4 +18,6 @@ Open VOICEVOX (Azure needs `azure_key` and `azure_region` in `.tts-keys.json`, n
    This is VOICEVOX's kana notation: `'` after the mora where the pitch falls (after the last mora = flat), `_` = devoiced, `、` = pause. The review page shows VOICEVOX's current notation for every word, so copy it and change what's wrong.
 5. `python tools/make_audio.py --approve` — turns the OK and FIXED drafts into MP3 files here, sets `"audio": true`, and records in `tools/audio_manifest.json` which text, fix and settings made each file.
 
+Azure recordings start with 0.3 s of silence and end without any (`leading_silence_ms`, `trailing_silence_ms`): Azure normally adds about a second at the end, which made the next word feel slow, and the correct-answer sound (`sounds/correct.mp3`, 0.28 s) plays inside the silence at the start, because on iPhones both sounds must start in the same tap.
+
 Engine, voice and settings are in `tools/voice.json`. Change them and every recording is made again. VOICEVOX drafts need `python -m pip install lameenc` to become MP3; Azure already returns MP3.

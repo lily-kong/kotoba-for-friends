@@ -33,6 +33,8 @@ js/words.js          loads words.json (skips retired words)
 js/schedule.js       review algorithm: which words to study, when to review next
 js/storage.js        data on the phone: progress, study log, user id, export/import
 js/quiz.js           the study flow
+js/session.js        the order of words inside a group (see DEVLOG.md)
+js/kana.js           spots answers wrong only in long vowels, voicing or a double consonant, and which characters differ
 js/keyboard.js       on-screen keyboard and computer keyboard
 js/sound.js          pronunciation
 js/home.js           home page and category pages
@@ -40,6 +42,7 @@ js/images.js         unlocks and decrypts the pictures
 js/guide.js          shows FRIENDS.md inside the app
 tools/check_words.py    checks words.json before you commit
 tools/encrypt_images.py encrypts images/ into images-enc/
+tools/make_chime.py     makes the correct-answer sound sounds/correct.mp3
 tools/make_audio.py     makes recordings: VOICEVOX checks the reading and pitch, Azure speaks (see audio/README.md)
 tools/voice.json        which engine (Azure or VOICEVOX), voice and settings
 tools/audio_fixes.json  hand-corrected readings and pitch accents for recordings
@@ -50,6 +53,7 @@ FRIENDS.md           the guide and letters for friends (also shown in the app)
 images/              one picture per word (originals, NOT committed)
 images-enc/          encrypted pictures (committed)
 audio/               recordings, audio/<id>.mp3 (see audio/README.md)
+sounds/correct.mp3   the sound played when a word is learned
 ```
 
 Run it locally:
@@ -117,7 +121,7 @@ A study log entry (practice typing after the answer is shown is not logged):
 {"user": "u_8f3a2k1x", "word": "iku-to_go", "correct": false, "answer": "いの", "hint": false, "time": "2026-11-18T13:05:00+09:00"}
 ```
 
-`hint: true` means the answer was given after the hint (number of kana and the first kana) was shown. The log is the raw record: a future review algorithm can be computed from it, and it shows each friend's weak words.
+`hint: true` means the answer was given after the hint (number of kana and the first kana) was shown. `near: true` (only on those entries) means Hint was pressed while the typed answer was wrong only in long vowels, voicing marks or a double consonant (とる for とおる); instead of the usual hint, the app shakes the answer, shows "Almost" above the keyboard and keeps the input to fix. It is scored like any first hint.
 
 Rules that keep the data usable:
 

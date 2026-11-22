@@ -101,7 +101,13 @@ def azure_ssml(text, notation, settings):
             raise ValueError(f"{reading} 里有多个声调单位（/），请在 audio_fixes.json 里写成一个")
         reading = reading.replace("_", "")                # Azure 的记法里没有清音化标记
         pieces.append(f"<phoneme alphabet='sapi' ph=\"{reading}\">{html.escape(piece)}</phoneme>")
-    return (f"<speak version='1.0' xml:lang='ja-JP'><voice name='{settings['voice']}'>"
+    # 开头和结尾的静音：Azure 默认结尾会多出 1 秒左右的静音，换词就会慢；
+    # 开头留一点，答对音效正好在这段静音里播放，不和读音重叠
+    silence = (f"<mstts:silence type='Leading-exact' value='{settings['leading_silence_ms']}ms'/>"
+               f"<mstts:silence type='Tailing-exact' value='{settings['trailing_silence_ms']}ms'/>")
+    return ("<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' "
+            "xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='ja-JP'>"
+            f"<voice name='{settings['voice']}'>{silence}"
             f"<prosody rate='{settings['rate']}'>{'、'.join(pieces)}</prosody></voice></speak>")
 
 

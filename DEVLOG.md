@@ -78,18 +78,78 @@ Each entry follows the same shape: **problem or feedback → decision → why �
 
 ---
 
+## 0.2.3 — 2026-11-22 · Inside a group: order, rhythm and a small reward
+
+**The problem.** A missed word was always put back two places later and had to be answered right three times in a row. Near the end of a group, when no new words were left, the same few missed words looped again and again, which is exactly the feeling I wanted to avoid. I wanted something like SpanishDict: words in threes, and when all three are missed, they come back as a block right after; later repetitions should be mixed with other words, not cycled.
+
+**What exists to borrow.** There is no standard algorithm for the order *inside* one session (FSRS, which I plan to use later, schedules *between* days). But a few ideas are well tested: Pimsleur's graduated intervals and expanding retrieval practice (Landauer & Bjork, 1978) — the gap grows after each success; Anki's learning steps — a missed card comes back within the same session; and the "working set" used by apps like Memrise and SpanishDict — only a few words are in play at once.
+
+**Design by simulation, before touching the app.** The ordering logic lives in its own file, `js/session.js`, with no UI, so the exact same code can run in a simulation and in the app. Every rule change below was checked by printing the real order for typical cases (uppercase = first time, lowercase = repetition, ✗ = missed).
+
+- **First version:** a missed word comes back three places later, then the gap grows (4, then 7); a repetition is never followed by another repetition when a new word could be shown instead; at most 4 unlearned words at once. All three missed gave exactly `A✗ B✗ C✗ a b c D a E b F c …`. But the simulation also showed the old problem at the end: a last missed word gave `L✗ l l l`, and with 30% errors a group took 77 appearances with 16 repetitions in a row.
+- **My rule: low pressure.** Instead of three right answers in a row: a missed word passes after **two** right answers in its reviews, or after **four** reviews whatever happens (right right → done; right wrong right → done; right wrong wrong → a fourth, then done). With the same random answers, the 30%-error group went from 77 to 31 appearances.
+- **Rejected: re-using learned words as spacers.** I tried filling gaps with words already learned in this group. It kept the spacing, but I decided learned words should not come back: being re-tested on something you just got right feels like distrust, and getting it wrong then is a punishment. Spacing has to come from new words and *other* missed words.
+
+**A hint is half a mistake.** Pressing Hint once (number of kana and first kana) and then answering right felt very different from needing the answer, but both counted as a full miss, which was discouraging. I suggested weights: one hint = 0.5, two hints = 1. → Each appearance now ends as *right*, *hinted* or *wrong*, and the weight decides how many right reviews are needed: hinted → 1, wrong → 2. If a hinted word later needs its answer shown, it goes up to 2. The result is only recorded when the appearance ends, so the app knows whether the hint was enough.
+
+**Small slips, small cost.** Two more sources of frustration: for one- or two-kana words the hint (length + first kana) nearly gives the answer away, and a wrong long vowel, voicing mark or double consonant is a near miss, not a blank. Long vowels and double consonants are especially hard for Spanish speakers, whose language doesn't distinguish length; voicing (k/g, t/d) exists in Spanish, so it's less of a problem but still happens. → Short words get only the length as a hint. For near misses I first made the app react on its own: as soon as the typed answer was a near miss, it showed the answer with the differing characters in red. Then I realised there is no submit key: learners already *see* that their answer isn't accepted, and they press Hint exactly when they don't know *why*. So the reaction moved to the Hint key: if the typed answer is a near miss, there is no usual hint; the answer shakes, "Almost — just a little off." appears above the keyboard, and the input stays so they can fix it themselves. Scoring isn't special (it counts like any first hint), but the log records `"near": true` with what was typed, so the raw data stays separate. If they press Hint again, the answer is shown with only the differing characters in red. Detection lives in `js/kana.js`: both answers are reduced to a "skeleton" without voicing marks, small っ and lengthening kana (づ/ず and ぢ/じ sound the same and count too), and compared; the red characters come from aligning the two strings (longest common subsequence). *Limit:* a missing long vowel at the very end (せんせ for せんせい) looks like an unfinished answer, so it gets the usual hint.
+
+**Final design.** Words come in threes: a miss comes back three places later, right after its batch of three; a right review pushes the next one four places away. Priority for the next word: a missed word's first review when due → another due review, but alternate with a new word when possible → a new word, unless 4 words are still unlearned → otherwise the unlearned word *shown longest ago*, even if it is a bit early. That last rule gives a guarantee: the last two positions hold at most two different words, so while three or more words are still unlearned, the word shown longest ago is never one of them. **The same word is never repeated back-to-back or alternated (a x a) while three or more words remain**; only the last one or two words can repeat closely.
+
+**Stress test.** The real `session.js`, 28,192 groups of 12 words: every combination of first-try misses (4,096) with all reviews right, the same 4,096 with all reviews wrong, and 20,000 random groups at 90 / 70 / 50 / 30 / 10% right.
+
+| | All cases | While 3+ words remain |
+|---|---|---|
+| Same word back-to-back | 13,990 | **0** |
+| Same word alternating (a x a) | 28,120 | **0** |
+
+After adding hint weights, the test was widened to 32,288 groups (first tries that were hinted or wrong, reviews all right or all wrong, and random right / hinted / wrong at five different rates): still **0** in both rows while three or more words remain.
+
+Every group ended; the longest took 60 appearances (90% wrong). To make sure the test could fail, I broke the gaps on purpose in a copy: with gaps of 1 it reported 164,431 violations, with gaps of 2 it reported 192,736 alternations. Finally, in the real app, missing the first three words produced `A✗ B✗ C✗ a b c D a E b F c G H I J K L`, identical to the simulation, with the right progress, log and saved review levels.
+
+**The moment a word is learned.** I wanted a small sound when a word is learned — right the first time, or right twice in its reviews — but not when it only passes because it reached four reviews: that would celebrate a word that wasn't really learned. → `answer()` in `session.js` reports *learned* or *finished*, and only *learned* plays the sound. The sound is generated by a small script (`tools/make_chime.py`, two rising notes, 0.28 s), so there's no sound file to license and it's easy to change.
+
+**Moving on felt slow.** After the reading, the next word took too long. Measuring all 194 recordings showed why: Azure adds about 1.1 s of silence at the end of each one, and the app waited for it. → Recordings are made with exact silences (none at the end, 0.3 s at the start), and the next word comes 0.5 s after the reading. The 0.3 s at the start has a second job: on iPhones a sound can only start inside the tap, so the correct-answer sound and the reading must start together, and the chime fits in that silence instead of overlapping the voice.
+
+
+**Assessment: does lower pressure cost learning?** My aim was less pressure without weaker memory. My judgement is that it costs little, for these reasons, but it is not proven yet:
+
+*Strengths*
+
+- **Every appearance is real retrieval.** The learner has to produce the word from a picture and English before seeing it, which is the strongest form of practice (the testing effect; Roediger & Karpicke, 2006). Even a hint (length and first kana) leaves most of the word to recall.
+- **Spacing and interleaving inside the group.** A word comes back only after other words, with a growing gap, and never back-to-back while three or more words remain (proved by the stress test). Spaced practice beats massed repetition (Cepeda et al., 2006).
+- **The cut repetitions were the least useful ones.** Extra repetitions in the same session give quickly diminishing returns for long-term memory (overlearning; Rohrer et al., 2005). Durable memory comes from the next days' reviews, and every word not answered right without help comes back the next day. Lowering the in-group requirement from three right answers to one or two mainly removes low-value repetitions.
+- **Bounded effort.** At most four reviews per word and at most four unlearned words at a time keep a bad day short. The sound only marks real success, never "passed because of the limit".
+- **Measurable.** Every attempt is in the log with its hint level, so these claims can be checked.
+
+*Limits*
+
+- **Passing in the group only shows short-term memory.** The gaps are three or four words, a few dozen seconds. The real test is the next day.
+- **The hint is strong for short words.** For あう, "2 kana, starting with あ" is almost the answer, so counting it as half a mistake may be too generous for two- or three-kana words.
+- **Typing slips count as misses.** A wrong long vowel or づ/ず may be an input problem, not a memory problem, and feels unfair.
+- **Words that never stick.** A word can pass by the four-review limit every day without being learned. There is no detection yet of such words (Anki calls them leeches), which might need a better note or picture.
+- **The schedule between days ignores the hint level.** A hinted word and a word whose answer was shown both start again from one day.
+- **Built on principles and simulations, not on friends' results yet.**
+
+*How to check it.* From the logs: compare next-day accuracy for words that were right, hinted or wrong in the group. If hinted words are recalled next day about as well as right ones, the half-mistake weight is fair; if not, hinted short words should need two right reviews. The same data can flag leeches, and can feed FSRS later, where *hinted* would map naturally to "Hard".
+
+---
+
 ## Lessons that keep coming back
 
 - **Store facts, not guesses.** A verb class instead of `true`, an `audio` field instead of asking the server, a raw log instead of only the derived progress.
 - **Make the tools say where to look.** The checker, mismatches first on the review page, the missing-pictures list: my attention is the scarcest resource.
 - **Test on the real thing.** iPhone sound, a stale cache, a password that never leaves my PC.
 - **Small feedback, small fix, right away.** Almost every entry above started as one sentence from a user.
+- **Simulate before building, and test the test.** Printing the real order for a few cases exposed problems no description would have; breaking the code on purpose proved the stress test could catch them.
 
 ## Open questions and next ideas
+
+- The review schedule between days is still a simple ladder (1 → 60 days). FSRS (used by Anki; `ts-fsrs` for JavaScript) could replace it in `js/schedule.js`, and the append-only log is the history it needs.
 
 - Right after a deploy, a phone can mix cached old and new JS files and show a blank page until reloaded; a small service worker would fix it.
 - Logs reach me only when a friend exports them; cloud sync would close the loop (append-only logs make merging easy).
 - A "this word confuses me" button, written to the log, to tie feelings to specific words.
 - Per-word speech speed for words like 増える.
 - Conjugation practice, built on the stored verb class.
-- A Python script that reads exported logs and lists each friend's hardest words and typical mistakes.
+- A Python script that reads exported logs and lists each friend's hardest words and typical mistakes. It should also answer two questions about the in-group rules: are hinted words recalled the next day as well as right ones, and which words keep failing day after day (leeches)?

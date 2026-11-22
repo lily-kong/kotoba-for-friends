@@ -91,6 +91,27 @@ button.small {
 #kanji { font-size: 36px; margin-top: 4px; }
 #kana { font-size: 20px; color: #555; }
 #feedback.wrong #kanji, #feedback.wrong #kana { color: #d03030; }  /* 没答出来：答案显示成红色 */
+.miss { color: #d03030; font-weight: 600; }   /* 差一点点：揭晓答案时，不一样的字标红 */
+/* 差一点点时按 Hint：答题区左右震一下，键盘上方出现一行提示 */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+#display.shake { animation: shake 0.35s; }
+#almost {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;                        /* 紧贴在键盘上方 */
+  padding: 8px;
+  font-size: 15px;
+  color: #8a5a00;
+  background: #fff4d6;
+  text-align: center;
+}
 /* 词汇页 */
 h1 { font-size: 22px; margin: 4px 0 16px; }
 #studyInfo { color: #555; margin-bottom: 4px; }

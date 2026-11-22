@@ -16,6 +16,12 @@ export function unlockSound() {
   soundUnlocked = true;
 }
 
+// 答对音效（tools/make_chime.py 生成）：一个词学会的那一刻播放。
+// 要和读音在同一次点击里一起开始（iPhone 只允许这时开始发声）；录音开头有 0.3 秒静音，音效正好放在里面
+export function playChime() {
+  new Audio("sounds/correct.mp3").play().catch(() => {});   // 放不出来也不影响学习
+}
+
 // 朗读一个词，返回一个 Promise：读完时完成。
 // 有录音就放录音（动词的录音里有原形和敬体两遍）；没有就用合成音，动词读两遍：原形、敬体
 export function playSound(word) {

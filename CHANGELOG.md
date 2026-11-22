@@ -2,6 +2,15 @@
 
 Versions follow `major.minor.patch`. Data on friends' phones (progress, study log) must keep working across every version.
 
+## 0.2.3 — 2026-11-22
+
+- New order of words inside a group (`js/session.js`): words come in threes, and a missed word comes back right after its three, then mixed with new words and other missed words instead of looping. A word answered after one hint passes after one right answer in its reviews; a word whose answer had to be shown needs two (and a hinted word whose answer is shown later needs two as well); four reviews at most. Learned words don't come back in the same group. While three or more words are still unlearned, the same word never appears twice in a row or alternating (stress-tested on 28,192 groups; see `DEVLOG.md`).
+- The progress bar counts learned words.
+- Words of one or two kana: the hint shows only the length, not the first kana.
+- Pressing Hint when the typed answer is wrong only in long vowels, voicing marks or a double consonant (とる for とおる, あける for あげる, かこ for かっこ, つずく for つづく): no usual hint; the answer shakes, "Almost — just a little off." appears above the keyboard, and the input stays to be fixed. It's scored like a first hint, and logged with `"near": true`. If the answer is then shown, only the differing characters are red. A missing long vowel at the very end can't be spotted, because the learner may still be typing.
+- A short correct-answer sound when a word is learned: right the first time, or right twice in its reviews (not when it only passes after four reviews). Made by `tools/make_chime.py`.
+- The next word comes 0.5 s after the reading ends (`AFTER_SOUND_MS`). Recordings no longer end with about a second of silence, so moving on is faster.
+
 ## 0.2.2 — 2026-11-22
 
 - Recordings now use Microsoft Azure's synthetic voice ja-JP-NanamiNeural, which sounds more natural. VOICEVOX still works out each reading and pitch accent (and the automatic reading check and hand corrections still apply); Azure is told exactly how to read each word with SSML `<phoneme>`, so it can't misread kanji like 開く.

@@ -2,36 +2,41 @@
 //
 // 一个词出现一次，最多经过这几个阶段（stage）：
 //   "first"    第一次机会：直接打
-//   "hint"     第二次机会：显示字数和第一个假名（已经算错）
-//   "practice" 已揭晓答案，照着再打一遍（只是练习）
-//   "done"     已打对，读音读完（至少停留一秒）后自动进入下一个词
+//   "hint"     第二次机会：按了 1 次 Hint。普通情况显示字数和第一个假名（短词只显示字数）；
+//              如果当时打的只差长音、浊音或促音（“差一点点”），不给普通提示，
+//              而是震一下、在键盘上方说 “Almost”，保留原来的输入让他们自己改
+//   "practice" 按了第 2 次 Hint，已揭晓答案，照着再打一遍（只是练习）
+//   "done"     已打对，读音读完后自动进入下一个词
+// 下一个出哪个词由 session.js 决定；每个词出现一次，在这一次结束时告诉它一次结果：
+// 不用提示就打对 = "right"；按了 1 次 Hint 后打对 = "hinted"（“差一点点”也一样）；
+// 按了 2 次 Hint、看了答案 = "wrong"。“差一点点”只在学习日志里另外记成 near
 
-import { CORRECT_AFTER_MISS, REPEAT_GAP, PAUSE_MS } from "./config.js";
+import { PAUSE_MS, AFTER_SOUND_MS, GHOST_MIN_KANA } from "./config.js";
 import { el, show, make } from "./ui.js";
 import { imageUrl } from "./images.js";
-import { playSound } from "./sound.js";
+import { playSound, playChime } from "./sound.js";
 import { pickGroup, nextRecord, shuffle } from "./schedule.js";
+import { createSession, nextItem, answer, clearedCount } from "./session.js";
+import { isNearMiss, diffMarks } from "./kana.js";
 import { loadProgress, saveProgress, appendLog } from "./storage.js";
 import { setHintVisible } from "./keyboard.js";
 
 // ---------- 状态 ----------
-let group = [];        // 本组的全部条目：{ word, need, missed }
-let queue = [];        // 本组还没 clear 的条目，排在最前面的就是下一个
-let current = null;    // 当前条目
+let session = null;    // 本组的出题状态（见 session.js）
+let current = null;    // 当前条目（session 里的一个 item，item.word 是单词）
 let stage = "first";
 let typed = "";        // 已经打出来的字（假名，末尾可能还有没拼完的罗马字，例如 "たb"）
 let started = false;   // 这个词是否已经开始打字（英文缩小上移，出现光标）
 let hintShown = false; // 答题区是否已变成短线
+let marks = null;      // 揭晓答案时要标红的字（打的“差一点点”时才有）：{ typed: [...], answer: [...] }
 
 // ---------- 开始 / 退出 ----------
 // tag = 只学这个分类；不写 = 从全部单词里学
 export function startGroup(tag = null) {
   const picked = pickGroup(loadProgress(), Date.now(), tag);
-  group = picked.fresh.concat(picked.review)
-    .map((word) => ({ word: word, need: 1, missed: false }));
-  queue = shuffle(group);
+  session = createSession(shuffle(picked.fresh.concat(picked.review)));
   // 提前把本组的图片全部解密好，换词时就不用等
-  for (const item of group) imageUrl(item.word).catch(() => {});
+  for (const item of session.items) imageUrl(item.word).catch(() => {});
   show("quiz");
   showNext();
 }
@@ -42,15 +47,18 @@ export function quitGroup() {
 }
 
 function showNext() {
-  if (queue.length === 0) {
+  const item = nextItem(session);
+  if (!item) {
     finishGroup();
     return;
   }
-  current = queue.shift();
+  current = item;
   stage = "first";
   started = false;
   hintShown = false;
   typed = "";
+  marks = null;
+  el.almost.classList.add("hidden");
 
   updateProgress();
   // 图片是解密后才有的：先清空，解密好了再显示（期间如果已经换了词，就不显示旧图）
@@ -69,7 +77,7 @@ function showNext() {
 function finishGroup() {
   const progress = loadProgress();
   const now = Date.now();
-  for (const item of group) {
+  for (const item of session.items) {
     progress.words[item.word.id] = nextRecord(progress.words[item.word.id], item.missed, now);
   }
   saveProgress(progress);
@@ -82,6 +90,7 @@ export function typeKey(key) {
   started = true;                              // 按了任何键：英文缩小上移，出现光标
   if (key === "Enter") return onHint();        // 回车位置就是 Hint 键
   if (stage === "done") return;                // 已经打对，不再接受输入
+  el.almost.classList.add("hidden");           // 开始修改了：收起 “Almost” 提示
   if (key === "Backspace") {
     typed = typed.slice(0, -1);                // 删掉最后一个字（一个假名或一个罗马字）
   } else {
@@ -100,41 +109,61 @@ export function typeKey(key) {
 // 打出了正确的单词
 function onCorrect() {
   if (stage === "first" || stage === "hint") appendLog(current.word, true, typed, stage === "hint");
-  if (stage === "first") {
-    // 只有第一次机会打对才算答对
-    current.need -= 1;
-    if (current.need > 0) requeue(current);
-  }
+  // 不用提示打对 = "right"，按了 1 次 Hint 后打对 = "hinted"；
+  // "practice" 阶段打对不再记录（看答案的那一刻已经记成 "wrong" 了）。
+  // 这一刻学会了这个词，就放答对音效（复习满 4 次才通过的不放）
+  const result = stage === "first" ? "right" : stage === "hint" ? "hinted" : null;
+  const outcome = result ? answer(session, current, result) : null;
+  if (outcome === "learned") playChime();
   typed = current.word.kana;
   stage = "done";
   updateProgress();
   render();
-  // 读音读完、并且至少停留 PAUSE_MS 之后，进入下一个词
+  moveOnAfter(showAnswer(), AFTER_SOUND_MS);
+}
+
+// 读音读完再停 extraMs，并且至少停留 PAUSE_MS，然后进入下一个词
+function moveOnAfter(sound, extraMs) {
   const answered = current;
-  const pause = new Promise((resolve) => setTimeout(resolve, PAUSE_MS));
-  Promise.all([showAnswer(), pause]).then(() => {
+  Promise.all([sound.then(() => sleep(extraMs)), sleep(PAUSE_MS)]).then(() => {
     if (current === answered) showNext();      // 期间退出了这一组，就什么都不做
   });
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // 按了 Hint（或回车）
 function onHint() {
-  if (stage === "first") {
-    // 第一次没答出来：算错，给出字数和第一个假名，再给一次机会
-    appendLog(current.word, false, typed, false);
-    current.need = CORRECT_AFTER_MISS;
-    current.missed = true;
-    requeue(current);
+  // 现在打的是不是“差一点点”（已经打完整，只差长音、浊音或促音）
+  const almost = !/[a-z]$/.test(typed) && isNearMiss(typed, current.word.kana);
+  if (stage === "first" && almost) {
+    // 差一点点：不给普通提示，震一下，键盘上方说 “Almost”，保留原来的输入让他们自己改。
+    // 计算上和按了 1 次 Hint 一样；学习日志里记成 near
+    appendLog(current.word, false, typed, false, true);
     stage = "hint";
+    render();
+    el.almost.classList.remove("hidden");
+    shake();
+  } else if (stage === "first") {
+    // 第一次没答出来：给出字数和第一个假名，再给一次机会
+    appendLog(current.word, false, typed, false);
+    stage = "hint";                            // 先不记录结果：看接下来是打对，还是再按一次 Hint
     hintShown = true;
     typed = "";
     updateProgress();
     render();
   } else if (stage === "hint") {
-    // 有提示还是没答出来：揭晓答案，照着打一遍才能继续
-    appendLog(current.word, false, typed, true);
+    // 有提示还是没答出来：揭晓答案，照着打一遍才能继续。
+    // 如果打的是“差一点点”，答案里不一样的字标红（其余照常显示），一眼看出差在哪
+    appendLog(current.word, false, typed, true, almost);
+    if (almost) marks = diffMarks(typed, current.word.kana);
+    else el.feedback.classList.add("wrong");   // 答案整个显示成红色
+    answer(session, current, "wrong");         // 这一次出现的结果：看了答案
+    updateProgress();                          // 第 4 次复习看了答案，也算通过
     stage = "practice";
-    el.feedback.classList.add("wrong");        // 答案显示成红色
+    el.almost.classList.add("hidden");
     typed = "";
     render();
     showAnswer();
@@ -142,28 +171,39 @@ function onHint() {
   // "practice" 和 "done" 阶段没有 Hint 键，回车键也不做任何事
 }
 
-// 把还没 clear 的词放回队列：隔 REPEAT_GAP 个别的词之后再出现
-// 例：第 1 个词答错，第 2、3 个词之后，它在第 4 个位置重新出现
-function requeue(item) {
-  const index = Math.min(REPEAT_GAP, queue.length);
-  queue.splice(index, 0, item);
+// 答题区左右震一下（安卓手机还会轻轻振动；iPhone 的网页不支持振动）
+function shake() {
+  el.display.classList.remove("shake");
+  void el.display.offsetWidth;                 // 让浏览器重新开始播放动画
+  el.display.classList.add("shake");
+  if (navigator.vibrate) navigator.vibrate(60);
 }
 
 // ---------- 画面 ----------
+// 进度条：本组学会了几个词
 function updateProgress() {
-  const cleared = group.filter((item) => item.need === 0).length;
-  el.progressFill.style.width = (cleared / group.length) * 100 + "%";
+  el.progressFill.style.width = (clearedCount(session) / session.items.length) * 100 + "%";
 }
 
 // 显示答案并朗读。动词显示成 “開ける／開けます”（输入时只需要打原形）
-// 返回读音的 Promise（读完时完成）
+// 打的是“差一点点”时，答案里不一样的字标红。返回读音的 Promise（读完时完成）
 function showAnswer() {
   const word = current.word;
   el.kanji.textContent = word.verb ? word.kanji + "／" + word.polite : word.kanji;
-  // 只有假名的词（ある、する…）上下两行会一模一样，这时不显示第二行
   const kana = word.verb ? word.kana + "／" + word.polite_kana : word.kana;
-  el.kana.textContent = kana === el.kanji.textContent ? "" : kana;
+  el.kana.innerHTML = "";
+  if (marks) {
+    // 原形的每个字：打错的标红；敬体照常显示
+    el.kana.append(...markedText(word.kana, marks.answer), word.verb ? "／" + word.polite_kana : "");
+  } else if (kana !== el.kanji.textContent) {
+    el.kana.textContent = kana;                // 只有假名的词（ある、する…）上下两行一样，不显示第二行
+  }
   return playSound(word);
+}
+
+// 把文字拆成一个个字，marks[i] 为 true 的字标红
+function markedText(text, wrong) {
+  return Array.from(text).map((char, i) => (wrong[i] ? make("span", "miss", char) : char));
 }
 
 // 根据当前 stage 和已经打出来的字，重新画一遍答题区
@@ -176,7 +216,7 @@ function render() {
 
   el.display.innerHTML = "";
   el.display.className = hintShown ? "slots" : "";
-  if (locked) el.display.classList.add("ok");
+  if (locked) el.display.classList.add("ok");   // 打对了：变绿
 
   if (!hintShown) {
     // 普通模式：打出来的字 + 一个闪烁的光标
@@ -202,9 +242,10 @@ function render() {
       slot.textContent = kana[i];
     } else if (i === kana.length && !locked) {
       // 当前这一格：正在拼的罗马字 + 光标；第一格什么都没打时，光标后面是灰色的第一个假名
+      // （1～2 个假名的短词不显示第一个假名，只提示字数，不然几乎等于告诉答案）
       if (romaji) slot.append(romaji);
       slot.appendChild(makeCaret());
-      if (i === 0 && !romaji) slot.appendChild(make("span", "ghost", answer[0]));
+      if (i === 0 && !romaji && answer.length >= GHOST_MIN_KANA) slot.appendChild(make("span", "ghost", answer[0]));
     }
     el.display.appendChild(slot);
   }

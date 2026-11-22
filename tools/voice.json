@@ -13,6 +13,8 @@
   },
   "azure": {
     "voice": "ja-JP-NanamiNeural",
-    "rate": "-20%"
+    "rate": "-20%",
+    "leading_silence_ms": 300,
+    "trailing_silence_ms": 0
   }
 }
