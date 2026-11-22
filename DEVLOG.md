@@ -135,6 +135,12 @@ Every group ended; the longest took 60 appearances (90% wrong). To make sure the
 
 ---
 
+## Unreleased · A keyboard that doesn't drop letters
+
+**Feedback:** on the phone, some taps clearly landed on a key but typed nothing. Three causes in the code: the page could still scroll, so the slightest finger movement turned a tap into a scroll and the browser cancelled the press (`pointercancel`); the 6 px gaps between keys and 12 px between rows were dead zones; and sliding off a key before lifting cancelled the letter. → The keyboard area blocks scrolling and zooming (`touch-action: none`); each key's touch area now fills the gaps, while the visible key is drawn inside it (`::before`), so it looks exactly the same — like the iPhone keyboard, whose touch areas have no gaps; and a key captures the finger on press (`setPointerCapture`), so lifting slightly off it still types it. Checked by probing over 21,000 points across the keyboard: none fell outside a key.
+
+---
+
 ## Lessons that keep coming back
 
 - **Store facts, not guesses.** A verb class instead of `true`, an `audio` field instead of asking the server, a raw log instead of only the derived progress.

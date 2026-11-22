@@ -2,6 +2,10 @@
 
 Versions follow `major.minor.patch`. Data on friends' phones (progress, study log) must keep working across every version.
 
+## Unreleased
+
+- Smoother on-screen keyboard: a tiny finger movement no longer cancels a key press (the keyboard no longer lets the page scroll), the gaps between keys count as part of the nearest key, and a finger that slides slightly off a key before lifting still types it. The keyboard looks the same.
+
 ## 0.2.3 — 2026-11-22
 
 - New order of words inside a group (`js/session.js`): words come in threes, and a missed word comes back right after its three, then mixed with new words and other missed words instead of looping. A word answered after one hint passes after one right answer in its reviews; a word whose answer had to be shown needs two (and a hinted word whose answer is shown later needs two as well); four reviews at most. Learned words don't come back in the same group. While three or more words are still unlearned, the same word never appears twice in a row or alternating (stress-tested on 28,192 groups; see `DEVLOG.md`).

@@ -50,14 +50,15 @@ function makeKey(key, onKey) {
   // 手指按下：显示按下效果；手指抬起：才真正输入（iPhone 键盘也是抬起时才输入）
   button.addEventListener("pointerdown", (event) => {
     event.preventDefault();                    // 不让按钮获得焦点，避免和电脑回车键冲突
+    // “锁定”这个键：手指按下后稍微滑出这个键再抬起，仍然算按了它，不会丢字
+    try { button.setPointerCapture(event.pointerId); } catch (error) { /* 不支持就算了 */ }
     button.classList.add("pressed");
   });
   button.addEventListener("pointerup", () => {
     if (button.classList.contains("pressed")) onKey(key);
     button.classList.remove("pressed");
   });
-  // 手指滑走或被系统打断：取消，不输入
-  button.addEventListener("pointerleave", () => button.classList.remove("pressed"));
+  // 被系统打断（例如来电）：取消，不输入。键盘设了 touch-action: none，滑动页面不会再打断按键
   button.addEventListener("pointercancel", () => button.classList.remove("pressed"));
   return button;
 }
