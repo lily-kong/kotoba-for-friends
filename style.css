@@ -92,7 +92,7 @@ button.small {
 #kana { font-size: 20px; color: #555; }
 #feedback.wrong #kanji, #feedback.wrong #kana { color: #d03030; }  /* 没答出来：答案显示成红色 */
 .miss { color: #d03030; font-weight: 600; }   /* 差一点点：揭晓答案时，不一样的字标红 */
-/* 差一点点时按 Hint：答题区左右震一下，键盘上方出现一行提示 */
+/* “差一点点”或打成了ます形：答题区左右震一下，键盘上方出现一行提示（#nudge） */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20% { transform: translateX(-8px); }
@@ -101,7 +101,7 @@ button.small {
   80% { transform: translateX(5px); }
 }
 #display.shake { animation: shake 0.35s; }
-#almost {
+#nudge {
   position: absolute;
   left: 0;
   right: 0;

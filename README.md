@@ -11,7 +11,7 @@ This app is built for a handful of friends, not for users in general, and that c
 
 The study log records *what* happened: which word, what was typed, whether a hint was used. It cannot record *how it felt*: an answer marked wrong that felt right, a picture that pointed to the wrong meaning, a group that was discouraging. Those are often the real reasons someone stops learning, and only the learner can report them.
 
-The app shows the same file on its Guide page (`js/guide.js` renders it with [marked](https://github.com/markedjs/marked)), and marks the button **new** until the latest letter has been read. The numbers from the logs and the feelings from the letters come back together, and the next version is built from both.
+The app shows the same file on its Guide page (`js/guide.js` renders it with [marked](https://github.com/markedjs/marked)), and marks the button **new** until the latest letter has been read. The numbers from the logs and the feelings from the letters come back together, and the next version is built from both. What friends report is kept, as it arrived, in [FEEDBACK.md](FEEDBACK.md).
 
 ### Writing a new letter
 
@@ -49,6 +49,7 @@ tools/audio_fixes.json  hand-corrected readings and pitch accents for recordings
 tools/audio_manifest.json  which text, fix and settings made each recording
 words.json           the word list
 DEVLOG.md            why the project is built this way, version by version
+FEEDBACK.md          real feedback from friends, as it arrived
 FRIENDS.md           the guide and letters for friends (also shown in the app)
 images/              one picture per word (originals, NOT committed)
 images-enc/          encrypted pictures (committed)
@@ -121,7 +122,7 @@ A study log entry (practice typing after the answer is shown is not logged):
 {"user": "u_8f3a2k1x", "word": "iku-to_go", "correct": false, "answer": "いの", "hint": false, "time": "2026-11-18T13:05:00+09:00"}
 ```
 
-`hint: true` means the answer was given after the hint (number of kana and the first kana) was shown. `near: true` (only on those entries) means Hint was pressed while the typed answer was wrong only in long vowels, voicing marks or a double consonant (とる for とおる); instead of the usual hint, the app shakes the answer, shows "Almost" above the keyboard and keeps the input to fix. It is scored like any first hint.
+`hint: true` means the answer was given after the hint (number of kana and the first kana) was shown. `near: true` (only on those entries) means Hint was pressed while the typed answer was wrong only in long vowels, voicing marks or a double consonant (とる for とおる); instead of the usual hint, the app shakes the answer, shows "Almost" above the keyboard and keeps the input to fix. It is scored like any first hint. `near: true` is also used when a verb was typed in its ます form: the app asks for the dictionary form the moment it's complete, without counting it as a mistake.
 
 Rules that keep the data usable:
 

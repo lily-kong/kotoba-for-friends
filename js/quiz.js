@@ -10,6 +10,11 @@
 // 下一个出哪个词由 session.js 决定；每个词出现一次，在这一次结束时告诉它一次结果：
 // 不用提示就打对 = "right"；按了 1 次 Hint 后打对 = "hinted"（“差一点点”也一样）；
 // 按了 2 次 Hint、看了答案 = "wrong"。“差一点点”只在学习日志里另外记成 near
+//
+// 动词打成了ます形（例如 あける 打成 あけます）：一打完就震一下，提示输入辞书形，保留输入让他们自己改。
+// 不算错：自己改对了就是直接答对；改不对按了 Hint，就和普通单词一样（普通提示，算半错）。
+// 学习日志里和 “Almost” 一样记成 near。
+// （第一条真人反馈：朋友打了ます形，应用没有任何反应，他以为卡住了。见 FEEDBACK.md）
 
 import { PAUSE_MS, AFTER_SOUND_MS, GHOST_MIN_KANA } from "./config.js";
 import { el, show, make } from "./ui.js";
@@ -21,6 +26,10 @@ import { isNearMiss, diffMarks } from "./kana.js";
 import { loadProgress, saveProgress, appendLog } from "./storage.js";
 import { setHintVisible } from "./keyboard.js";
 
+// 键盘上方的提示文字
+const NUDGE_ALMOST = "Almost — just a little off.";
+const NUDGE_MASU = "Please type the dictionary form.";
+
 // ---------- 状态 ----------
 let session = null;    // 本组的出题状态（见 session.js）
 let current = null;    // 当前条目（session 里的一个 item，item.word 是单词）
@@ -29,6 +38,7 @@ let typed = "";        // 已经打出来的字（假名，末尾可能还有没
 let started = false;   // 这个词是否已经开始打字（英文缩小上移，出现光标）
 let hintShown = false; // 答题区是否已变成短线
 let marks = null;      // 揭晓答案时要标红的字（打的“差一点点”时才有）：{ typed: [...], answer: [...] }
+let masuLogged = false; // 这次出现里，打成ます形的作答已经记进日志了（只记一次）
 
 // ---------- 开始 / 退出 ----------
 // tag = 只学这个分类；不写 = 从全部单词里学
@@ -58,7 +68,8 @@ function showNext() {
   hintShown = false;
   typed = "";
   marks = null;
-  el.almost.classList.add("hidden");
+  masuLogged = false;
+  el.nudge.classList.add("hidden");
 
   updateProgress();
   // 图片是解密后才有的：先清空，解密好了再显示（期间如果已经换了词，就不显示旧图）
@@ -90,7 +101,7 @@ export function typeKey(key) {
   started = true;                              // 按了任何键：英文缩小上移，出现光标
   if (key === "Enter") return onHint();        // 回车位置就是 Hint 键
   if (stage === "done") return;                // 已经打对，不再接受输入
-  el.almost.classList.add("hidden");           // 开始修改了：收起 “Almost” 提示
+  el.nudge.classList.add("hidden");            // 开始修改了：收起键盘上方的提示
   if (key === "Backspace") {
     typed = typed.slice(0, -1);                // 删掉最后一个字（一个假名或一个罗马字）
   } else {
@@ -98,12 +109,30 @@ export function typeKey(key) {
     // IMEMode：末尾单独的 n 先不变成 ん，因为可能是 な、に… 的开头
     typed = wanakana.toHiragana(typed + key, { IMEMode: true });
   }
-  // 每打一个字就检查一次，打对了直接进入 done
+  // 每打一个字就检查一次：打对了直接进入 done；打成了ます形，马上提醒（不用等他按 Hint）
   if (normalize(typed) === normalize(current.word.kana)) {
     onCorrect();
+  } else if (isMasuForm()) {
+    onMasu();
   } else {
     render();
   }
+}
+
+// 现在打的是不是这个动词的ます形（已经打完整）
+function isMasuForm() {
+  return Boolean(current.word.verb) && !/[a-z]$/.test(typed)
+    && normalize(typed) === normalize(current.word.polite_kana);
+}
+
+// 打成了ます形：震一下，提示输入辞书形，保留输入。不算错，stage 不变，看他们能不能自己改对
+function onMasu() {
+  if (!masuLogged && stage !== "practice") {
+    appendLog(current.word, false, typed, stage === "hint", { near: true });
+    masuLogged = true;
+  }
+  render();
+  showNudge(NUDGE_MASU);
 }
 
 // 打出了正确的单词
@@ -136,34 +165,35 @@ function sleep(ms) {
 
 // 按了 Hint（或回车）
 function onHint() {
+  // （打成ます形时按 Hint：和普通单词一样处理，所以这里不用特别判断）
   // 现在打的是不是“差一点点”（已经打完整，只差长音、浊音或促音）
   const almost = !/[a-z]$/.test(typed) && isNearMiss(typed, current.word.kana);
   if (stage === "first" && almost) {
     // 差一点点：不给普通提示，震一下，键盘上方说 “Almost”，保留原来的输入让他们自己改。
     // 计算上和按了 1 次 Hint 一样；学习日志里记成 near
-    appendLog(current.word, false, typed, false, true);
+    appendLog(current.word, false, typed, false, { near: true });
     stage = "hint";
     render();
-    el.almost.classList.remove("hidden");
-    shake();
+    showNudge(NUDGE_ALMOST);
   } else if (stage === "first") {
     // 第一次没答出来：给出字数和第一个假名，再给一次机会
     appendLog(current.word, false, typed, false);
     stage = "hint";                            // 先不记录结果：看接下来是打对，还是再按一次 Hint
     hintShown = true;
     typed = "";
+    el.nudge.classList.add("hidden");          // 收起之前的提示（例如ます形的提醒）
     updateProgress();
     render();
   } else if (stage === "hint") {
     // 有提示还是没答出来：揭晓答案，照着打一遍才能继续。
     // 如果打的是“差一点点”，答案里不一样的字标红（其余照常显示），一眼看出差在哪
-    appendLog(current.word, false, typed, true, almost);
+    appendLog(current.word, false, typed, true, almost ? { near: true } : {});
     if (almost) marks = diffMarks(typed, current.word.kana);
     else el.feedback.classList.add("wrong");   // 答案整个显示成红色
     answer(session, current, "wrong");         // 这一次出现的结果：看了答案
     updateProgress();                          // 第 4 次复习看了答案，也算通过
     stage = "practice";
-    el.almost.classList.add("hidden");
+    el.nudge.classList.add("hidden");
     typed = "";
     render();
     showAnswer();
@@ -171,12 +201,18 @@ function onHint() {
   // "practice" 和 "done" 阶段没有 Hint 键，回车键也不做任何事
 }
 
-// 答题区左右震一下（安卓手机还会轻轻振动；iPhone 的网页不支持振动）
+// 键盘上方显示一行提示，同时答题区震一下
+function showNudge(text) {
+  el.nudge.textContent = text;
+  el.nudge.classList.remove("hidden");
+  shake();
+}
+
+// 答题区左右晃一下（只是画面动画，手机本身不振动）
 function shake() {
   el.display.classList.remove("shake");
   void el.display.offsetWidth;                 // 让浏览器重新开始播放动画
   el.display.classList.add("shake");
-  if (navigator.vibrate) navigator.vibrate(60);
 }
 
 // ---------- 画面 ----------

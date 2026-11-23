@@ -135,9 +135,13 @@ Every group ended; the longest took 60 appearances (90% wrong). To make sure the
 
 ---
 
-## Unreleased · A keyboard that doesn't drop letters
+## 0.2.4 — 2026-11-23 · Smoother typing, and the first real feedback
 
 **Feedback:** on the phone, some taps clearly landed on a key but typed nothing. Three causes in the code: the page could still scroll, so the slightest finger movement turned a tap into a scroll and the browser cancelled the press (`pointercancel`); the 6 px gaps between keys and 12 px between rows were dead zones; and sliding off a key before lifting cancelled the letter. → The keyboard area blocks scrolling and zooming (`touch-action: none`); each key's touch area now fills the gaps, while the visible key is drawn inside it (`::before`), so it looks exactly the same — like the iPhone keyboard, whose touch areas have no gaps; and a key captures the finger on press (`setPointerCapture`), so lifting slightly off it still types it. Checked by probing over 21,000 points across the keyboard: none fell outside a key.
+
+**The first real feedback** ([FEEDBACK.md](FEEDBACK.md) #1). A friend typed the ます form of a verb; the app neither accepted it nor moved on, and they thought it had frozen. Until then every decision came from my own use; this was the first time someone else's experience showed a gap I couldn't see. Real feedback now has its own file, `FEEDBACK.md`, kept apart from this log: here the decisions, there the evidence as it arrived. The deeper lesson: because answers are checked while typing, a wrong but complete answer produces *no reaction*, and silence reads as a crash. → The ます form is now recognised as soon as it's complete (it can never be the start of the dictionary form, so it can't fire while someone is still typing). The answer shakes, "Please type the dictionary form." appears above the keyboard, and the input stays. The learner shouldn't have to know about the Hint key to get unstuck, so it reacts without waiting for it. My first version counted it as one hint and logged a new `masu` field; I then decided against both. It's a misunderstanding of the task that people make once, not a memory gap, so it isn't counted as a mistake: fixing it is a right answer, and only if they still can't and press Hint does it continue like any other word (the usual hint, half a mistake). The log simply marks it `"near": true`, like other near misses, instead of adding a field for a one-time error.
+
+**Feeling the keys, later.** I tried real vibration on key presses and reminders. Android browsers support it, but iPhone web pages have no vibration API, only an unofficial trick (toggling a hidden switch control on iOS 18+). I decided against shipping half a feature built on a trick: phone vibration waits for a future app version, and the reminders keep only the on-screen shake.
 
 ---
 
@@ -150,6 +154,8 @@ Every group ended; the longest took 60 appearances (90% wrong). To make sure the
 - **Simulate before building, and test the test.** Printing the real order for a few cases exposed problems no description would have; breaking the code on purpose proved the stress test could catch them.
 
 ## Open questions and next ideas
+
+- From the first real feedback: a wrong but complete answer still gets no reaction until Hint is pressed. A gentle sign after a pause (without giving anything away) might help people who don't know about Hint.
 
 - The review schedule between days is still a simple ladder (1 → 60 days). FSRS (used by Anki; `ts-fsrs` for JavaScript) could replace it in `js/schedule.js`, and the append-only log is the history it needs.
 

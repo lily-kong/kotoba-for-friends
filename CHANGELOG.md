@@ -2,9 +2,11 @@
 
 Versions follow `major.minor.patch`. Data on friends' phones (progress, study log) must keep working across every version.
 
-## Unreleased
+## 0.2.4 — 2026-11-23
 
 - Smoother on-screen keyboard: a tiny finger movement no longer cancels a key press (the keyboard no longer lets the page scroll), the gaps between keys count as part of the nearest key, and a finger that slides slightly off a key before lifting still types it. The keyboard looks the same.
+- Typing a verb's ます form (from the first friend's feedback, see `FEEDBACK.md`): as soon as it's complete, the answer shakes and "Please type the dictionary form." appears above the keyboard; the input stays to be fixed. It isn't counted as a mistake: fixing it is a right answer; pressing Hint instead continues like any other word. Logged with `"near": true`.
+- `FEEDBACK.md`: real feedback from friends, kept apart from `DEVLOG.md`.
 
 ## 0.2.3 — 2026-11-22
 
