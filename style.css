@@ -1,4 +1,5 @@
 * { box-sizing: border-box; }
+html { touch-action: manipulation; }   /* 可以滑动，但双击不会放大 */
 body {
   margin: 0;
   padding: 16px;
@@ -18,7 +19,8 @@ main { width: 100%; max-width: 420px; text-align: center; }
 #image {
   width: 100%;
   aspect-ratio: 3 / 2;
-  max-height: 30vh;           /* 小屏手机上把图片压矮，给键盘留位置 */
+  flex: 0 1 auto;             /* 屏幕不够高时，只有图片会变矮（被裁剪），文字和键盘不受影响 */
+  min-height: 0;
   object-fit: cover;
   background: #fff;
   border: 1px solid #ddd;
@@ -138,13 +140,46 @@ h1 { font-size: 22px; margin: 4px 0 16px; }
 #tools button { margin-top: 0; }
 #quit { width: auto; margin: 0; padding: 0 4px; font-size: 24px; line-height: 1; }
 
+/* ---------- 答题页：正好一屏，不能滚动 ----------
+   从上到下排成一列：顶部、图片、英文、答题区、答案，键盘排在最底下。
+   键盘不再浮在页面上，所以永远不会挡住文字；屏幕矮的话，图片自动变矮让出位置 */
+html.quiz-mode, html.quiz-mode body { overflow: hidden; overscroll-behavior: none; }
+html.quiz-mode body { padding-bottom: 0; }    /* 键盘贴到屏幕底边 */
+#quiz {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 16px);                 /* 屏幕高度减去 body 上边距（旧浏览器） */
+  height: calc(100dvh - 16px);                /* dvh：手机浏览器地址栏收起/展开时也准确 */
+  touch-action: none;                         /* 答题页上不滑动、不缩放 */
+}
+#quiz.hidden { display: none; }
+#quiz > :not(#image) { flex-shrink: 0; }      /* 除了图片，其他都保持原来的高度 */
+
+/* 矮屏幕（例如 iPhone SE 加上浏览器的地址栏和工具栏）：键盘、文字和间距都缩小一点 */
+@media (max-height: 600px) {
+  html.quiz-mode body { padding-top: 8px; }
+  #quiz { height: calc(100vh - 8px); height: calc(100dvh - 8px); }
+  #quizTop { margin-bottom: 6px; }
+  #note { margin-top: 4px; }
+  #en { font-size: 22px; margin: 6px 0 2px; }
+  #display { height: 40px; font-size: 24px; }
+  .slot { height: 36px; }
+  #feedback { min-height: 70px; margin-top: 2px; }
+  #kanji { font-size: 28px; margin-top: 0; }
+  #kana { font-size: 17px; }
+  #keyboard .key { height: 46px; font-size: 20px; }   /* #keyboard：让这条规则比后面 .key 的规则优先 */
+  #keyboard .key::before { inset: 4px 3px; }
+}
+/* 特别矮的屏幕：放不下图片了，就不显示图片 */
+@media (max-height: 460px) {
+  #image { display: none; }
+}
+
 /* ---------- 屏幕键盘（模仿 iPhone 键盘） ---------- */
-#quiz { padding-bottom: 250px; }              /* 给固定在底部的键盘留出空间 */
 #keyboard {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;                  /* #nudge 以它为准，贴在键盘上方 */
+  flex-shrink: 0;
+  margin: auto calc(50% - 50vw) 0;     /* 上：auto 把键盘推到最底下；左右：撑满整个屏幕宽 */
   padding: 2px 0 calc(2px + env(safe-area-inset-bottom));  /* 避开 iPhone 底部横条 */
   background: #d1d4da;
   user-select: none;                   /* 长按不会选中文字 */

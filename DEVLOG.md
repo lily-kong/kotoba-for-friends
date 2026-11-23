@@ -143,6 +143,10 @@ Every group ended; the longest took 60 appearances (90% wrong). To make sure the
 
 **Feeling the keys, later.** I tried real vibration on key presses and reminders. Android browsers support it, but iPhone web pages have no vibration API, only an unofficial trick (toggling a hidden switch control on iOS 18+). I decided against shipping half a feature built on a trick: phone vibration waits for a future app version, and the reminders keep only the on-screen shake.
 
+**A quiz page that stays still** (fixed after the release, no new version). **Feedback (my own, on the phone):** double-tapping zoomed the page, which nobody needs here, and the quiz page could slide up and down. I'd rather it didn't move at all, but on a short phone the keyboard might then cover the words. → Zoom is off everywhere (`touch-action: manipulation` stops double-tap zoom; iPhone Safari ignores `user-scalable=no`, so a `gesturestart` listener stops pinching). The quiz page is now a column exactly one screen high (`100dvh`, which follows the browser bars as they appear and disappear), with the keyboard as its last item instead of floating over the page. Because the keyboard takes real space, nothing can be underneath it. The picture is the only part allowed to shrink, so a short screen gets a smaller picture, never hidden text. Below 600 px of visible height (an iPhone SE with the browser bars) the keyboard, text and spacing get smaller too, and below 460 px the picture goes. Checked in headless Chrome at visible heights from 382 to 746 px: the page never scrolls, the keyboard touches the bottom edge, and the English, the typed answer and the revealed answer all stay above it, with and without the reminder bar.
+
+**Why a friend still saw the old version.** After 0.2.4 was published, a friend who opened the link from Instagram still had no ます-form reminder. The site was up to date; their phone wasn't. GitHub Pages lets browsers keep files for 10 minutes, and Instagram's in-app browser keeps its copy much longer. It also keeps its own storage, separate from Safari, so progress made inside Instagram doesn't follow the friend to Safari or the home-screen app. For now the advice is to open the link in Safari and add it to the home screen.
+
 ---
 
 ## Lessons that keep coming back
@@ -159,7 +163,7 @@ Every group ended; the longest took 60 appearances (90% wrong). To make sure the
 
 - The review schedule between days is still a simple ladder (1 → 60 days). FSRS (used by Anki; `ts-fsrs` for JavaScript) could replace it in `js/schedule.js`, and the append-only log is the history it needs.
 
-- Right after a deploy, a phone can mix cached old and new JS files and show a blank page until reloaded; a small service worker would fix it.
+- Right after a deploy, a phone can mix cached old and new JS files and show a blank page until reloaded, and in-app browsers (Instagram) can keep an old version much longer. A service worker wouldn't help inside Instagram on iPhone; giving every release new file addresses (e.g. `main.js?v=…`) would.
 - Logs reach me only when a friend exports them; cloud sync would close the loop (append-only logs make merging easy).
 - A "this word confuses me" button, written to the log, to tie feelings to specific words.
 - Per-word speech speed for words like 増える.
