@@ -8,13 +8,15 @@ Each update comes with a short letter here.
 
 ## Letter — 2026-11-20
 
-**New:** 194 verbs (common ones in **Doshi_N5**, the rest in **Doshi_hoka**). Answers now show and say both forms, 開ける／開けます; you only type the first. Progress bars on the home page, and each category has its own **Study** button.
+**New:** Answers now show and say both forms, 開ける／開けます; you only type the first. Progress bars on the home page, and each category has its own **Study** button.
 
 **Tip:** many verbs come in pairs. The grey note tells you which one:
 **(intransitive)** it happens — ドアが開く · **(transitive)** someone does it — ドアを開ける.
 Just notice the pairs; your brain sorts them out.
 
 **A little thought:** while sorting these verbs, I found many I can't tell apart myself, and it has never really troubled me in daily life. So learning words can be low-pressure: lots of light repetition. When you meet a new word, you can't know yet what is worth remembering, so don't force it. Let the app bring it back again and again, and let it write itself into your memory.
+
+I'm working on ways to help you remember kanji better, and I'll try them out in a future version.
 
 **Remember:** pressing **Hint** isn't failing. It tells the app "show me this again soon", and that's how remembering works. 🌱
 

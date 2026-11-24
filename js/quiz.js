@@ -89,7 +89,7 @@ function finishGroup() {
   const progress = loadProgress();
   const now = Date.now();
   for (const item of session.items) {
-    progress.words[item.word.id] = nextRecord(progress.words[item.word.id], item.missed, now);
+    progress.words[item.word.id] = nextRecord(progress.words[item.word.id], item.results, now);
   }
   saveProgress(progress);
   show("done");

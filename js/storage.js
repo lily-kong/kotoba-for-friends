@@ -36,11 +36,14 @@ function write(key, value) {
 // {
 //   "version": 2,
 //   "words": {
-//     "au-to_meet": { "level": 1, "due": 1795000000000, "last": 1794900000000, "misses": 2 }
+//     "au-to_meet": { "stability": 4.21, "difficulty": 6.1, "level": 2, "due": 1795000000000,
+//                     "last": 1794900000000, "misses": 2 }
 //   }
 // }
-// level = 在 INTERVAL_DAYS 里的位置；due = 下次复习时间；last = 上次学习时间
-// misses = 累计有多少组答错过这个词；时间都是毫秒时间戳（Date.now()）
+// stability、difficulty = FSRS 的记忆稳定性（天）和难度（1～10），见 fsrs.js（0.2.5 之前的记录没有，读取时换算）
+// level = 旧阶梯 OLD_INTERVAL_DAYS 里的位置（现在只给缓存里的旧版网页用）
+// due = 下次复习时间；last = 上次学习时间
+// misses = 累计有多少组没有直接答对这个词；时间都是毫秒时间戳（Date.now()）
 export function loadProgress() {
   const saved = read(PROGRESS_KEY, null);
   return saved && saved.words ? saved : { version: 2, words: {} };
@@ -70,6 +73,8 @@ function mergeProgress(a, b) {
 //  "hint": false, "time": "2026-11-18T13:05:00+09:00"}
 // correct = 这次是否打对；answer = 这次打出来的字（没打完的罗马字也会留着，例如 "いk"）
 // hint = 是否是在看到提示（字数和第一个假名）之后作答
+// 以后的新题型（例如锚点练习）会在记录里加 "mode"（题型）；没有 mode 的记录都是现在的“看英文打假名”。
+// 锚点练习的进度以后用新的 KEY 单独存，不写进上面的进度，所以普通复习的安排不受影响
 // near = true（只在这种记录上才有）：“差一点点”的作答。按 Hint 时只差长音、浊音或促音
 //   （例如 とおる 打成 とる），或者动词打成了ます形（例如 あける 打成 あけます）
 export function loadLog() {

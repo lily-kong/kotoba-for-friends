@@ -30,7 +30,7 @@ export function createSession(words) {
     word: word,
     seen: false,       // 出现过没有
     done: false,       // 学会了没有（学会了本组就不再出现）
-    missed: false,     // 本组答错过没有（结束时用来安排长期复习）
+    results: [],       // 每次出现的结果，按顺序（结束时用来安排隔天之后的复习，见 schedule.js）
     reviews: 0,        // 答错之后复习了几次
     passed: 0,         // 复习时答对了几次
     needed: 0,         // 复习时需要答对几次才学会
@@ -81,6 +81,7 @@ export function answer(session, item, result) {
   const right = result === "right";
   let outcome = null;
   session.lastWasRepeat = item.seen;
+  item.results.push(result);
   if (!item.seen) session.fresh = session.fresh.filter((other) => other !== item);
 
   if (isReview) {
@@ -103,7 +104,6 @@ export function answer(session, item, result) {
     outcome = "learned";
   } else {
     // 第一次出现没有直接答对：开始复习。需要答对几次，看用了多少提示
-    item.missed = true;
     item.needed = result === "hinted" ? PASSES_AFTER_HINT : PASSES_AFTER_WRONG;
     item.due = session.step + GAP_AFTER_MISS;
     session.learning.push(item);

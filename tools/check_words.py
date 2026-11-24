@@ -31,6 +31,11 @@ FIELDS = {"id": str, "kana": str, "kanji": str, "en": str, "note": str, "tags": 
 VERB_CLASSES = {"godan", "ichidan", "irregular"}   # 五段、一段、不规则（する、来る）
 # 动词还必须有的字段：敬体（ます形）
 VERB_FIELDS = {"polite": str, "polite_kana": str}
+# 可以没有的字段
+# anchors：这个词里的汉字挂在哪个已学的词（锚点）上，给以后的锚点练习用（格式见 README）。例如 意見：
+#   "anchors": [{"char": "見", "word": "miru-to_see", "reading": "けん", "meaning": "view"}]
+OPTIONAL_FIELDS = {"anchors": list}
+ANCHOR_KEYS = {"char", "word", "reading", "meaning"}
 I_ROW = dict(zip("うくぐすつぬぶむる", "いきぎしちにびみり"))   # 五段动词：词尾 う段 → い段
 # 五段动词里的例外：敬体是 ～います，不是 ～ります
 HONORIFIC_ARU = ("いらっしゃる", "おっしゃる", "なさる", "くださる", "ござる")
@@ -115,7 +120,10 @@ def check(words, published):
                 errors.append(f"{where}: 缺少字段 {field}")
             elif field != "verb" and not isinstance(word[field], kind):
                 errors.append(f"{where}: {field} 应该是 {kind.__name__}，现在是 {word[field]!r}")
-        for field in word.keys() - required.keys():
+        for field, kind in OPTIONAL_FIELDS.items():
+            if field in word and not isinstance(word[field], kind):
+                errors.append(f"{where}: {field} 应该是 {kind.__name__}，现在是 {word[field]!r}")
+        for field in word.keys() - required.keys() - OPTIONAL_FIELDS.keys():
             if field in VERB_FIELDS:
                 warnings.append(f"{where}: 不是动词，却有 {field}")
             else:
@@ -189,6 +197,8 @@ def check(words, published):
             elif notes.count(note) > 1:
                 warnings.append(f"{word_id}: 英文 \"{en}\" 有 {len(group)} 个词（{others}），note \"{note}\" 也一样，分不清")
 
+    check_anchors(words, errors)
+
     # 没有对应单词的图片（例如文件名打错了）
     for image in sorted(IMAGES_DIR.glob("*.jpg")):
         if image.stem not in ids:
@@ -215,6 +225,38 @@ def check(words, published):
     if missing:
         errors.append(f"{len(missing)} 个在用的词还没有图片，列表见 {MISSING_FILE.name}")
     return errors, warnings, missing
+
+
+def check_anchors(words, errors):
+    """检查 anchors 字段：锚点字在这个词里、锚点词存在并且在用、读音是这个词读音的一部分"""
+    by_id = {w.get("id"): w for w in words if isinstance(w, dict)}
+    for word in words:
+        if not isinstance(word, dict) or not isinstance(word.get("anchors"), list):
+            continue
+        where = word.get("id")
+        if not word["anchors"]:
+            errors.append(f"{where}: anchors 是空列表，没有锚点就删掉这个字段")
+        for anchor in word["anchors"]:
+            if not isinstance(anchor, dict) or anchor.keys() != ANCHOR_KEYS                     or not all(isinstance(anchor[key], str) and anchor[key] for key in ANCHOR_KEYS):
+                errors.append(f"{where}: anchors 里每一项都要有 char、word、reading、meaning 四个非空文字：{anchor!r}")
+                continue
+            char, target = anchor["char"], by_id.get(anchor["word"])
+            if len(char) != 1 or char not in word.get("kanji", ""):
+                errors.append(f"{where}: 锚点字 {char} 应该是一个字，并且出现在 {word.get('kanji')} 里")
+            if target is None:
+                errors.append(f"{where}: 锚点词 {anchor['word']} 不存在")
+            elif target is word:
+                errors.append(f"{where}: 锚点词不能是自己")
+            else:
+                if target.get("retired") is not False:
+                    errors.append(f"{where}: 锚点词 {anchor['word']} 已经退役")
+                if char not in target.get("kanji", ""):
+                    errors.append(f"{where}: 锚点字 {char} 不在锚点词 {target.get('kanji')} 里")
+            reading = anchor["reading"]
+            if not KANA_PATTERN.match(reading):
+                errors.append(f"{where}: 锚点字的读音只能是假名：{reading}")
+            elif reading not in word.get("kana", ""):
+                errors.append(f"{where}: 锚点字的读音 {reading} 不在这个词的读音 {word.get('kana')} 里")
 
 
 def write_missing_list(missing):

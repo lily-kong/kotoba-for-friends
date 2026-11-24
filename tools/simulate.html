@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kotoba · 复习规则模拟</title>
+<style>
+  body { font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; margin: 24px; color: #222; background: #fafafa; }
+  table { border-collapse: collapse; margin: 8px 0 24px; font-size: 14px; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { background: #f0f0f0; }
+  .pass { color: #1a8f3c; } .fail { color: #d03030; font-weight: 600; }
+  p { max-width: 760px; line-height: 1.6; color: #555; }
+</style>
+</head>
+<body>
+<!-- 改了复习规则（js/schedule.js、js/fsrs.js、js/config.js）之后，在这里检查：
+     1. 兼容：旧版本的进度记录还能用；新记录给缓存里的旧版网页读也不出错
+     2. 压力测试：模拟不同的学习者学几百天，看积压和记住的词数
+     用法：在项目文件夹运行 python -m http.server，然后打开 http://localhost:8000/tools/simulate.html -->
+<h1>复习规则模拟</h1>
+<p>用的是网站里真正的 <code>pickGroup</code> 和 <code>nextRecord</code>。学习者是编出来的模型（指数遗忘，每个词难易不同，10% 的新词本来就会），所以数字只适合比较两种规则，不能预测真人。</p>
+<div id="out">运行中……</div>
+<script type="module" src="simulate.js"></script>
+</body>
+</html>

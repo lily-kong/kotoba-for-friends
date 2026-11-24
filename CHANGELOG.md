@@ -2,11 +2,20 @@
 
 Versions follow `major.minor.patch`. Data on friends' phones (progress, study log) must keep working across every version.
 
+## 0.2.5 — 2026-11-24
+
+- Review between days now uses FSRS-5 (`js/fsrs.js`, the algorithm behind Anki) instead of the 1 → 60 day ladder. Each word keeps a stability (days until it's 90% likely to be remembered) and a difficulty, and is reviewed when its chance of being remembered drops to 90%, at most 180 days later. The first try of each word in a group is the main rating: right = Good (a new word right on the first try = Easy, it was already known), after a hint or "Almost" = Hard, answer shown = Again. Later tries in the same group count as same-day reviews (FSRS-5's own formula), so a word missed three times in its group comes back more often than one missed once (`COUNT_SAME_DAY` turns this off). A forgotten word no longer starts over from one day, a word reviewed late and still remembered gets a longer interval, and hard words come back more often than easy ones.
+- Due words that are most likely forgotten come first.
+- New words per group: 4 while the due reviews fit in the group (8 or fewer), otherwise 1 (`NEW_WHEN_BACKLOG`). While new words are left, every group has at least one.
+- Existing progress carries over: old records are converted on the fly (the old interval becomes the stability), and new records still include `level`, so an old cached version of the page keeps working.
+- Focus on N5 for now: 始める moves from Doshi_hoka to Doshi_N5 (100 words, next to its pair 始まる), and Doshi_hoka is hidden (`HIDDEN_TAGS` in `js/config.js`). Hidden words aren't shown or studied; progress on them stays on the phone and comes back when the tag is removed from the list.
+- Prepared for the planned anchor practice (no feature yet): words may have an optional `anchors` list linking a kanji to an already-learned word (`char`, `word`, `reading`, `meaning`; see README), and `tools/check_words.py` checks it. Future question types will add `"mode"` to log entries.
+- `tools/simulate.html`: checks that old progress records still work (and that new records still work in an old cached page), then stress-tests the review rules with simulated learners.
+
 ## 0.2.4 — 2026-11-23
 
 - Fix after release: the page can't be zoomed any more (double-tap or pinch).
 - Fix after release: the quiz page fits exactly one screen and doesn't scroll. The keyboard is part of the page instead of floating over it, so it can never cover text. On shorter screens only the picture gets smaller; below 600 px of visible height the keyboard, text and spacing are a little smaller, and below 460 px the picture is hidden. The home and guide pages still scroll as before.
-
 - Smoother on-screen keyboard: a tiny finger movement no longer cancels a key press (the keyboard no longer lets the page scroll), the gaps between keys count as part of the nearest key, and a finger that slides slightly off a key before lifting still types it. The keyboard looks the same.
 - Typing a verb's ます form (from the first friend's feedback, see `FEEDBACK.md`): as soon as it's complete, the answer shakes and "Please type the dictionary form." appears above the keyboard; the input stays to be fixed. It isn't counted as a mistake: fixing it is a right answer; pressing Hint instead continues like any other word. Logged with `"near": true`.
 - `FEEDBACK.md`: real feedback from friends, kept apart from `DEVLOG.md`.

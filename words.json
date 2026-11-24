@@ -105,7 +105,7 @@
   {"id": "haku-to_wear", "kana": "はく", "kanji": "履く", "en": "to wear", "note": "(shoes, trousers)", "tags": ["Doshi_N5"], "verb": "godan", "polite": "履きます", "polite_kana": "はきます", "audio": true, "retired": false},
   {"id": "hashiru-to_run", "kana": "はしる", "kanji": "走る", "en": "to run", "note": "", "tags": ["Doshi_N5"], "verb": "godan", "polite": "走ります", "polite_kana": "はしります", "audio": true, "retired": false},
   {"id": "hajimaru-to_start", "kana": "はじまる", "kanji": "始まる", "en": "to start", "note": "(intransitive)", "tags": ["Doshi_N5"], "verb": "godan", "polite": "始まります", "polite_kana": "はじまります", "audio": true, "retired": false},
-  {"id": "hajimeru-to_start", "kana": "はじめる", "kanji": "始める", "en": "to start", "note": "(transitive)", "tags": ["Doshi_hoka"], "verb": "ichidan", "polite": "始めます", "polite_kana": "はじめます", "audio": true, "retired": false},
+  {"id": "hajimeru-to_start", "kana": "はじめる", "kanji": "始める", "en": "to start", "note": "(transitive)", "tags": ["Doshi_N5"], "verb": "ichidan", "polite": "始めます", "polite_kana": "はじめます", "audio": true, "retired": false},
   {"id": "hataraku-to_work", "kana": "はたらく", "kanji": "働く", "en": "to work", "note": "", "tags": ["Doshi_N5"], "verb": "godan", "polite": "働きます", "polite_kana": "はたらきます", "audio": true, "retired": false},
   {"id": "hanasu-to_speak", "kana": "はなす", "kanji": "話す", "en": "to speak", "note": "", "tags": ["Doshi_N5"], "verb": "godan", "polite": "話します", "polite_kana": "はなします", "audio": true, "retired": false},
   {"id": "hareru-to_clear_up", "kana": "はれる", "kanji": "晴れる", "en": "to clear up", "note": "", "tags": ["Doshi_N5"], "verb": "ichidan", "polite": "晴れます", "polite_kana": "はれます", "audio": true, "retired": false},

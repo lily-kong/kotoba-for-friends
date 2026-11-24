@@ -27,10 +27,11 @@ Most of the code was written with an AI coding assistant; the decisions, the des
 index.html           page structure
 style.css            look
 js/main.js           entry point: loads the word list, connects the pages
-js/config.js         settings (group size, review intervals, ...)
+js/config.js         settings (group size, target retention, ...)
 js/ui.js             shared page helpers
 js/words.js          loads words.json (skips retired words)
 js/schedule.js       review algorithm: which words to study, when to review next
+js/fsrs.js           the FSRS-5 memory model behind it (pure math)
 js/storage.js        data on the phone: progress, study log, user id, export/import
 js/quiz.js           the study flow
 js/session.js        the order of words inside a group (see DEVLOG.md)
@@ -43,6 +44,8 @@ js/guide.js          shows FRIENDS.md inside the app
 tools/check_words.py    checks words.json before you commit
 tools/encrypt_images.py encrypts images/ into images-enc/
 tools/make_chime.py     makes the correct-answer sound sounds/correct.mp3
+tools/simulate.html     after changing the review rules: checks old progress still works, and stress-tests the rules
+                        with simulated learners (python -m http.server, then open localhost:8000/tools/simulate.html)
 tools/make_audio.py     makes recordings: VOICEVOX checks the reading and pitch, Azure speaks (see audio/README.md)
 tools/voice.json        which engine (Azure or VOICEVOX), voice and settings
 tools/audio_fixes.json  hand-corrected readings and pitch accents for recordings
@@ -92,15 +95,16 @@ One word per line:
 {"id": "akeru-to_open", "kana": "あける", "kanji": "開ける", "en": "to open", "note": "(transitive)", "tags": ["Doshi_N5"], "verb": "ichidan", "polite": "開けます", "polite_kana": "あけます", "audio": false, "retired": false}
 ```
 
-- One entry is one meaning of one word. Every field is required.
+- One entry is one meaning of one word. Every field is required, except `anchors`.
 - `id`: lowercase letters, digits, `_` and `-`. It is also the picture's file name. **Never change it once published.**
 - `note`: shown in small text under the picture, above the English. Use it for part of speech, 自動詞/他動詞, or nuances English can't express. `""` for none.
-- `tags`: a list of categories. The home page lists every tag, in the order it first appears in the file. Verbs are in `Doshi_N5` (common JLPT N5 verbs) or `Doshi_hoka` (all others).
+- `tags`: a list of categories. The home page lists every tag, in the order it first appears in the file. Verbs are in `Doshi_N5` (common JLPT N5 verbs) or `Doshi_hoka` (all others). A tag listed in `HIDDEN_TAGS` (`js/config.js`) is hidden: its words aren't shown or studied, but progress on them stays on the phone, and removing the tag from the list brings them back. `Doshi_hoka` is hidden for now, to focus on N5.
 - Spelling follows common JLPT word lists (e.g. なる, できる, 出かける in kana where JLPT lists use kana).
 - Words with the same `en` must each have a different `note` (e.g. `(transitive)` / `(intransitive)`, `(shirt, coat)` / `(shoes, trousers)`), otherwise friends can't tell which one to type.
 - `verb`: the verb class, `"godan"` (五段), `"ichidan"` (一段) or `"irregular"` (する, 来る); `false` for words that are not verbs. Conjugation rules depend on the class, so it is needed for future conjugation practice. Verbs also need `polite` and `polite_kana`, the ます form. The answer is shown as 開ける／開けます and both forms are read aloud, but only the plain form counts as a correct answer. The checker works out the ます form from the class and warns when it differs, which catches a wrong class or a typo.
 - `retired`: `true` hides the word everywhere. Use it instead of deleting. If a word needs a big change (a different reading or meaning), retire it and add the new version under a new `id`, so it is studied as a new word.
 - `audio`: `true` when `audio/<id>.mp3` exists (made by `tools/make_audio.py`; verbs contain the plain form, then the ます form). The app plays the recording for these words and uses the browser's Japanese voice for the rest. Because this is written in `words.json`, the app never has to ask the server whether a recording exists.
+- `anchors` (optional, for the planned anchor practice): which kanji in this word hang on a word already learned, e.g. for 意見: `"anchors": [{"char": "見", "word": "miru-to_see", "reading": "けん", "meaning": "view"}]`. `reading` is how the character is read *in this word* (けん in 意見, み in 花見), `meaning` what it means here. A list, because a word can have two anchors (見学). The app doesn't use it yet; the checker already verifies it (the anchor word exists and is in use, the character is in both words, the reading is part of this word's kana).
 - The picture must be `images/<id>.jpg` (encrypted to `images-enc/<id>.bin`).
 - **Study all words** picks new words at random; a category's own **Study** button takes them in the order they appear in the file, so keep pairs (開く／開ける) next to each other.
 
@@ -123,6 +127,8 @@ A study log entry (practice typing after the answer is shown is not logged):
 ```
 
 `hint: true` means the answer was given after the hint (number of kana and the first kana) was shown. `near: true` (only on those entries) means Hint was pressed while the typed answer was wrong only in long vowels, voicing marks or a double consonant (とる for とおる); instead of the usual hint, the app shakes the answer, shows "Almost" above the keyboard and keeps the input to fix. It is scored like any first hint. `near: true` is also used when a verb was typed in its ます form: the app asks for the dictionary form the moment it's complete, without counting it as a mistake.
+
+Future question types (such as the planned anchor practice) will add `"mode"` to their entries; an entry without `mode` is today's English → kana question. The anchor practice will keep its own progress under a new key, so it never changes the review schedule of the ordinary word lists.
 
 Rules that keep the data usable:
 
