@@ -1,7 +1,8 @@
 // 比较假名的小工具（和画面无关，可以单独测试）：
 //   isNearMiss  判断是不是“差一点点”：只差长音、浊音或促音，例如 とる → とおる、かく → がく、かこ → かっこ
 //   diffMarks   标出两边对不上的字：打出来的里面打错或多打的，正确答案里面漏打或打错的（标红用）
-// 限制：漏打结尾的长音（せんせい 打成 せんせ）判断不了，因为它也可能是“还没打完”
+// isNearMiss 只在按 Hint 的那一刻用：按了 Hint 就是“打完了”，所以漏打结尾的长音（せんせい 打成 せんせ、
+// りょこう 打成 りょこ）也算差一点点。汉字模式的小词多是音读名词，结尾的长音特别多
 
 // 每个假名的元音，用来认出长音（おう、えい……）
 const VOWEL = {};
@@ -33,10 +34,10 @@ function skeleton(text) {
   return result;
 }
 
-// typed = 打出来的（已经拼完的假名），answer = 正确答案
+// typed = 打出来的（已经拼完的假名），answer = 正确答案。
+// 骨架相同 = 只差长音、浊音或促音。打了一半就按 Hint（例如 がっこう 只打了 がっ）骨架不同，不算
 export function isNearMiss(typed, answer) {
   if (!typed || typed === answer) return false;
-  if (answer.startsWith(typed)) return false;              // 还在往下打（例如 がっこう 打到 がっこ）
   return skeleton(typed) === skeleton(answer);
 }
 

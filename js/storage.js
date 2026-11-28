@@ -2,6 +2,7 @@
 //   1. 学习进度：每个词现在的复习状态，由复习算法算出来，会被改写
 //   2. 学习日志：每一次作答的原始记录，只追加，永远不修改、不删除
 //   3. 用户 id：第一次打开时随机生成，用来区分日志是谁的
+//   4. 汉字模式的进度：和 1 一样的记录，单独存（见下面 1b）
 //
 // 保护朋友数据的规则（更新网站时遵守这几条，数据就不会丢）：
 // 1. 不改下面三个 KEY；单词的 id 发布后永远不改（进度和日志都是按 id 记的）
@@ -11,6 +12,7 @@
 const PROGRESS_KEY = "jpwords-progress-v2";
 const LOG_KEY = "kotoba-log-v1";
 const USER_KEY = "kotoba-user";
+const KANJI_KEY = "kotoba-kanji-progress-v1";   // 汉字模式的进度（和上面的进度分开，互不影响）
 
 // localStorage 只能存字符串，所以存之前转成 JSON，读的时候再转回来。
 // 手机可能禁止存储（例如无痕模式），所以都包在 try 里，出错也不影响学习
@@ -53,18 +55,35 @@ export function saveProgress(progress) {
   write(PROGRESS_KEY, progress);
 }
 
-// 重置只清空进度（从头开始学），学习日志保留
+// 重置只清空进度（两种模式都从头开始学），学习日志保留
 export function resetProgress() {
-  try { localStorage.removeItem(PROGRESS_KEY); } catch (error) {}
+  try {
+    localStorage.removeItem(PROGRESS_KEY);
+    localStorage.removeItem(KANJI_KEY);
+  } catch (error) {}
 }
 
-// 合并两份进度：同一个词保留“最近一次学习”（last 更大）的那条记录，任何一边的词都不会被删掉
-function mergeProgress(a, b) {
-  const merged = { ...a.words };               // 先复制 a 的全部记录
-  for (const [id, record] of Object.entries(b.words)) {
+// 合并两份记录表（id → 记录）：同一个 id 保留“最近一次学习”（last 更大）的那条，任何一边的记录都不会被删掉
+function mergeRecords(a, b) {
+  const merged = { ...a };                     // 先复制 a 的全部记录
+  for (const [id, record] of Object.entries(b)) {
     if (!merged[id] || (record.last || 0) > (merged[id].last || 0)) merged[id] = record;
   }
-  return { version: 2, words: merged };
+  return merged;
+}
+
+// ---------- 1b. 汉字模式的进度 ----------
+// 格式：{ "version": 1, "cards": { 卡片 id: 记录 } }，记录的格式和上面的进度一样（FSRS，见 schedule.js）。
+// 卡片 id：
+//   "read:<锚点词 id>"  锚点读法题：只显示汉字（例如 見る），答假名。和看英文答 見る 是两张不同的卡
+//   "<小词 id>"         小词（kanji_words.json 里的词），看图片和英文答假名
+export function loadKanjiProgress() {
+  const saved = read(KANJI_KEY, null);
+  return saved && saved.cards ? saved : { version: 1, cards: {} };
+}
+
+export function saveKanjiProgress(progress) {
+  write(KANJI_KEY, progress);
 }
 
 // ---------- 2. 学习日志 ----------
@@ -73,8 +92,9 @@ function mergeProgress(a, b) {
 //  "hint": false, "time": "2026-11-18T13:05:00+09:00"}
 // correct = 这次是否打对；answer = 这次打出来的字（没打完的罗马字也会留着，例如 "いk"）
 // hint = 是否是在看到提示（字数和第一个假名）之后作答
-// 以后的新题型（例如锚点练习）会在记录里加 "mode"（题型）；没有 mode 的记录都是现在的“看英文打假名”。
-// 锚点练习的进度以后用新的 KEY 单独存，不写进上面的进度，所以普通复习的安排不受影响
+// 其他题型在记录里加 "mode"（题型）；没有 mode 的记录都是“看英文打假名”（小词也是）。
+//   "mode": "read" = 汉字模式的锚点读法题（只看汉字打假名），"word" 是锚点词的 id。
+// 汉字模式的进度存在 KANJI_KEY（见上面 1b），不写进普通进度，所以普通复习的安排不受影响
 // near = true（只在这种记录上才有）：“差一点点”的作答。按 Hint 时只差长音、浊音或促音
 //   （例如 とおる 打成 とる），或者动词打成了ます形（例如 あける 打成 あけます）
 export function loadLog() {
@@ -118,16 +138,23 @@ export function getUser() {
 }
 
 // ---------- 导出 / 导入（备份，或者把记录发给你分析） ----------
-// 导出文件格式：{ "user": ..., "exported": 时间, "progress": 进度, "log": 日志 }
+// 导出文件格式：{ "user": ..., "exported": 时间, "progress": 进度, "kanjiProgress": 汉字模式的进度, "log": 日志 }
 export function exportData() {
-  return { user: getUser(), exported: localTime(), progress: loadProgress(), log: loadLog() };
+  return {
+    user: getUser(), exported: localTime(),
+    progress: loadProgress(), kanjiProgress: loadKanjiProgress(), log: loadLog(),
+  };
 }
 
 // 把导出文件合并进这台手机的数据：进度保留较新的记录，日志两边都保留
 export function importData(data) {
   const progress = data.progress || data;       // 旧版导出文件里只有进度
   if (!progress || typeof progress.words !== "object") throw new Error("not a progress file");
-  saveProgress(mergeProgress(loadProgress(), progress));
+  saveProgress({ version: 2, words: mergeRecords(loadProgress().words, progress.words) });
+  // 汉字模式的进度（以前导出的文件里没有）
+  if (data.kanjiProgress && typeof data.kanjiProgress.cards === "object") {
+    saveKanjiProgress({ version: 1, cards: mergeRecords(loadKanjiProgress().cards, data.kanjiProgress.cards) });
+  }
   if (Array.isArray(data.log)) write(LOG_KEY, mergeLog(loadLog(), data.log));
   // 恢复自己的备份（例如换了手机）：继续用原来的用户 id
   if (typeof data.user === "string") write(USER_KEY, data.user);

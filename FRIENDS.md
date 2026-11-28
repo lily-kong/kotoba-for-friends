@@ -6,19 +6,21 @@ Each update comes with a short letter here.
 
 ---
 
-## Letter — 2026-11-20
+## Letter — 2026-11-29
 
-**New:** Answers now show and say both forms, 開ける／開けます; you only type the first. Progress bars on the home page, and each category has its own **Study** button.
+**New: Kanji mode (a trial).** Tap **Kanji 漢字** at the bottom of the home page.
 
-**Tip:** many verbs come in pairs. The grey note tells you which one:
-**(intransitive)** it happens — ドアが開く · **(transitive)** someone does it — ドアを開ける.
-Just notice the pairs; your brain sorts them out.
+1. Each kanji starts from a word you already know, shown only in kanji — like **見る** — with pictures of its new words above it. Type the reading.
+2. Right? You go on to 1–3 new words with the same kanji (意見, 花見, 見学), with pictures and English as usual.
+3. Not yet? That kanji comes back later in the group, and its new words wait until next time.
 
-**A little thought:** while sorting these verbs, I found many I can't tell apart myself, and it has never really troubled me in daily life. So learning words can be low-pressure: lots of light repetition. When you meet a new word, you can't know yet what is worth remembering, so don't force it. Let the app bring it back again and again, and let it write itself into your memory.
+A kanji opens once you've learned its word in Words mode, so the two modes grow together.
 
-I'm working on ways to help you remember kanji better, and I'll try them out in a future version.
+**A little thought:** the many readings of kanji are one of the hard parts of Japanese. In Chinese, a character usually has just one reading (a few have two). Japanese kanji keep the original Japanese reading **(kun'yomi)** as well as readings that came from Chinese **(on'yomi)**. That's why I start from the **kun reading** of verbs with a single kanji, and link it to the other common readings of the same kanji. For the exam, writing kanji by hand matters little, so maybe focus on recognizing their shapes and how they're read in different words.
 
-**Remember:** pressing **Hint** isn't failing. It tells the app "show me this again soon", and that's how remembering works. 🌱
+**This is a trial, and your opinion matters a lot.** Kanji feel natural to me, so I can easily miss how this works for someone who didn't grow up with them. Is the order clear? Do the pictures help or confuse? Is it too much at once? Please tell me — it will shape the next version.
+
+**Where this is going:** I'm collecting everything for N5 and N4 that simply has to be memorized. The short-term goal is for Kotoba to take over that rote part of the N4 exam for you. If another way of memorizing suits you better — anything at all — please share it with me. 💬
 
 ---
 
@@ -52,4 +54,16 @@ The same file is your backup: **Import progress** puts it back, for example on a
 
 ## Earlier letters
 
-*(This is the first one!)*
+### Letter — 2026-11-20
+
+**New:** Answers now show and say both forms, 開ける／開けます; you only type the first. Progress bars on the home page, and each category has its own **Study** button.
+
+**Tip:** many verbs come in pairs. The grey note tells you which one:
+**(intransitive)** it happens — ドアが開く · **(transitive)** someone does it — ドアを開ける.
+Just notice the pairs; your brain sorts them out.
+
+**A little thought:** while sorting these verbs, I found many I can't tell apart myself, and it has never really troubled me in daily life. So learning words can be low-pressure: lots of light repetition. When you meet a new word, you can't know yet what is worth remembering, so don't force it. Let the app bring it back again and again, and let it write itself into your memory.
+
+I'm working on ways to help you remember kanji better, and I'll try them out in a future version.
+
+**Remember:** pressing **Hint** isn't failing. It tells the app "show me this again soon", and that's how remembering works. 🌱

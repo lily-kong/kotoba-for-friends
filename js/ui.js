@@ -12,11 +12,17 @@ export function make(tag, className, text = "") {
   return node;
 }
 
-// 切换页面：只显示 name 这一页（lock / home / guide / tag / quiz / done）
+// 切换页面：只显示 name 这一页（lock / home / kanjiPage / guide / tag / quiz / done）
 export function show(name) {
-  for (const view of ["lock", "home", "guide", "tag", "quiz", "done"]) {
+  for (const view of ["lock", "home", "kanjiPage", "guide", "tag", "quiz", "done"]) {
     el[view].classList.toggle("hidden", view !== name);
   }
+  // 底部的模式切换栏：只在首页（Words）和汉字页（Kanji）显示，当前模式高亮
+  const withModeBar = name === "home" || name === "kanjiPage";
+  el.modeBar.classList.toggle("hidden", !withModeBar);
+  el.modeWords.classList.toggle("active", name === "home");
+  el.modeKanji.classList.toggle("active", name === "kanjiPage");
+  document.documentElement.classList.toggle("with-mode-bar", withModeBar);   // 给底部栏留出空间
   // 答题页正好占满一屏、不能滚动（style.css 里的 .quiz-mode）
   document.documentElement.classList.toggle("quiz-mode", name === "quiz");
 }

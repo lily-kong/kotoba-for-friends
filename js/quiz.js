@@ -15,6 +15,9 @@
 // 不算错：自己改对了就是直接答对；改不对按了 Hint，就和普通单词一样（普通提示，算半错）。
 // 学习日志里和 “Almost” 一样记成 near。
 // （第一条真人反馈：朋友打了ます形，应用没有任何反应，他以为卡住了。见 FEEDBACK.md）
+//
+// 两种组：Words 模式（startGroup，看图片和英文打假名）和汉字模式（startKanjiGroup，见 kanjischedule.js）。
+// 汉字模式的锚点读法题（word.mode === "read"）只显示汉字，不显示图片、英文和 note；其余流程完全一样
 
 import { PAUSE_MS, AFTER_SOUND_MS, GHOST_MIN_KANA } from "./config.js";
 import { el, show, make } from "./ui.js";
@@ -23,7 +26,7 @@ import { playSound, playChime } from "./sound.js";
 import { pickGroup, nextRecord, shuffle } from "./schedule.js";
 import { createSession, nextItem, answer, clearedCount } from "./session.js";
 import { isNearMiss, diffMarks } from "./kana.js";
-import { loadProgress, saveProgress, appendLog } from "./storage.js";
+import { loadProgress, saveProgress, loadKanjiProgress, saveKanjiProgress, appendLog } from "./storage.js";
 import { setHintVisible } from "./keyboard.js";
 
 // 键盘上方的提示文字
@@ -32,6 +35,7 @@ const NUDGE_MASU = "Please type the dictionary form.";
 
 // ---------- 状态 ----------
 let session = null;    // 本组的出题状态（见 session.js）
+let saveResults = null; // 本组结束时怎么保存（Words 模式和汉字模式存在不同的地方）
 let current = null;    // 当前条目（session 里的一个 item，item.word 是单词）
 let stage = "first";
 let typed = "";        // 已经打出来的字（假名，末尾可能还有没拼完的罗马字，例如 "たb"）
@@ -41,12 +45,25 @@ let marks = null;      // 揭晓答案时要标红的字（打的“差一点点
 let masuLogged = false; // 这次出现里，打成ます形的作答已经记进日志了（只记一次）
 
 // ---------- 开始 / 退出 ----------
-// tag = 只学这个分类；不写 = 从全部单词里学
+// Words 模式。tag = 只学这个分类；不写 = 从全部单词里学
 export function startGroup(tag = null) {
   const picked = pickGroup(loadProgress(), Date.now(), tag);
-  session = createSession(shuffle(picked.fresh.concat(picked.review)));
-  // 提前把本组的图片全部解密好，换词时就不用等
-  for (const item of session.items) imageUrl(item.word).catch(() => {});
+  runGroup(shuffle(picked.fresh.concat(picked.review)), new Map(), saveWordResults);
+}
+
+// 汉字模式。cards、requires 由 kanjischedule.js 的 pickKanjiGroup 选好（顺序就是出题顺序，不打乱）
+export function startKanjiGroup(cards, requires) {
+  runGroup(cards, requires, saveKanjiResults);
+}
+
+function runGroup(cards, requires, save) {
+  session = createSession(cards, requires);
+  saveResults = save;
+  // 提前把本组的图片全部解密好，换词时就不用等（读法题没有图片）
+  for (const item of session.items) {
+    const pictures = item.word.mode === "read" ? item.word.previews || [] : [item.word];
+    for (const word of pictures) imageUrl(word).catch(() => {});
+  }
   show("quiz");
   showNext();
 }
@@ -72,27 +89,66 @@ function showNext() {
   el.nudge.classList.add("hidden");
 
   updateProgress();
-  // 图片是解密后才有的：先清空，解密好了再显示（期间如果已经换了词，就不显示旧图）
   const word = current.word;
+  // 锚点读法题：只显示汉字（例如 見る）。图片和 note 由 style.css 的 .read-mode 藏起来
+  const reading = word.mode === "read";
+  el.quiz.classList.toggle("read-mode", reading);
+  // 图片是解密后才有的：先清空，解密好了再显示（期间如果已经换了词，就不显示旧图）
   el.image.removeAttribute("src");
-  imageUrl(word).then((url) => { if (current.word === word) el.image.src = url; }).catch(() => {});
-  el.note.textContent = current.word.note || "";   // 没有提示就留空（CSS 会把它藏起来）
-  el.en.textContent = current.word.en;
-  el.feedback.classList.remove("wrong");
+  if (!reading) imageUrl(word).then((url) => { if (current.word === word) el.image.src = url; }).catch(() => {});
+  showPreviews(reading ? word.previews || [] : []);
+  el.note.textContent = reading ? "" : word.note || "";   // 没有提示就留空（CSS 会把它藏起来）
+  el.en.textContent = reading ? word.kanji : word.en;
+  el.feedback.classList.remove("wrong", "focus-right", "focus-wrong");
   el.kanji.textContent = "";
   el.kana.textContent = "";
   render();
 }
 
+// 锚点读法题上方的一排小图：这个字的小词的图片（每张一样大，见 style.css 的 #previews）。
+// 没有小词（或者不是读法题）就整排藏起来
+function showPreviews(smallWords) {
+  el.previews.innerHTML = "";
+  el.previews.classList.toggle("hidden", smallWords.length === 0);
+  const card = current.word;
+  for (const small of smallWords) {
+    const picture = make("img", "preview");
+    picture.alt = "";
+    el.previews.appendChild(picture);
+    // 解密好了再显示；期间如果已经换了题，就不管了
+    imageUrl(small).then((url) => { if (current.word === card) picture.src = url; }).catch(() => {});
+  }
+}
+
 // 整组 clear 之后才保存进度；中途退出的话，这一组不算
 function finishGroup() {
+  saveResults(session.items.filter((item) => item.results.length > 0), Date.now());
+  show("done");
+}
+
+// Words 模式：存进普通进度
+function saveWordResults(items, now) {
   const progress = loadProgress();
-  const now = Date.now();
-  for (const item of session.items) {
+  for (const item of items) {
     progress.words[item.word.id] = nextRecord(progress.words[item.word.id], item.results, now);
   }
   saveProgress(progress);
-  show("done");
+}
+
+// 汉字模式：存进汉字模式的进度（卡片 id 见 storage.js 的 1b）
+function saveKanjiResults(items, now) {
+  const progress = loadKanjiProgress();
+  for (const item of items) {
+    progress.cards[item.word.id] = nextRecord(progress.cards[item.word.id], item.results, now);
+  }
+  saveKanjiProgress(progress);
+}
+
+// 记一条学习日志。锚点读法题记成锚点词的 id，加上 mode: "read"（见 storage.js）
+function log(correct, typedText, hint, extra = {}) {
+  const word = current.word;
+  if (word.mode) appendLog({ id: word.wordId }, correct, typedText, hint, { mode: word.mode, ...extra });
+  else appendLog(word, correct, typedText, hint, extra);
 }
 
 // ---------- 输入 ----------
@@ -128,7 +184,7 @@ function isMasuForm() {
 // 打成了ます形：震一下，提示输入辞书形，保留输入。不算错，stage 不变，看他们能不能自己改对
 function onMasu() {
   if (!masuLogged && stage !== "practice") {
-    appendLog(current.word, false, typed, stage === "hint", { near: true });
+    log(false, typed, stage === "hint", { near: true });
     masuLogged = true;
   }
   render();
@@ -137,7 +193,7 @@ function onMasu() {
 
 // 打出了正确的单词
 function onCorrect() {
-  if (stage === "first" || stage === "hint") appendLog(current.word, true, typed, stage === "hint");
+  if (stage === "first" || stage === "hint") log(true, typed, stage === "hint");
   // 不用提示打对 = "right"，按了 1 次 Hint 后打对 = "hinted"；
   // "practice" 阶段打对不再记录（看答案的那一刻已经记成 "wrong" 了）。
   // 这一刻学会了这个词，就放答对音效（复习满 4 次才通过的不放）
@@ -171,13 +227,13 @@ function onHint() {
   if (stage === "first" && almost) {
     // 差一点点：不给普通提示，震一下，键盘上方说 “Almost”，保留原来的输入让他们自己改。
     // 计算上和按了 1 次 Hint 一样；学习日志里记成 near
-    appendLog(current.word, false, typed, false, { near: true });
+    log(false, typed, false, { near: true });
     stage = "hint";
     render();
     showNudge(NUDGE_ALMOST);
   } else if (stage === "first") {
     // 第一次没答出来：给出字数和第一个假名，再给一次机会
-    appendLog(current.word, false, typed, false);
+    log(false, typed, false);
     stage = "hint";                            // 先不记录结果：看接下来是打对，还是再按一次 Hint
     hintShown = true;
     typed = "";
@@ -187,9 +243,11 @@ function onHint() {
   } else if (stage === "hint") {
     // 有提示还是没答出来：揭晓答案，照着打一遍才能继续。
     // 如果打的是“差一点点”，答案里不一样的字标红（其余照常显示），一眼看出差在哪
-    appendLog(current.word, false, typed, true, almost ? { near: true } : {});
+    log(false, typed, true, almost ? { near: true } : {});
     if (almost) marks = diffMarks(typed, current.word.kana);
-    else el.feedback.classList.add("wrong");   // 答案整个显示成红色
+    // 汉字模式：只有主要学的字和它的读音标红，其余保持黑色；Words 模式：答案整个显示成红色
+    if (current.word.focus) el.feedback.classList.add("focus-wrong");
+    else if (!almost) el.feedback.classList.add("wrong");
     answer(session, current, "wrong");         // 这一次出现的结果：看了答案
     updateProgress();                          // 第 4 次复习看了答案，也算通过
     stage = "practice";
@@ -225,16 +283,29 @@ function updateProgress() {
 // 打的是“差一点点”时，答案里不一样的字标红。返回读音的 Promise（读完时完成）
 function showAnswer() {
   const word = current.word;
-  el.kanji.textContent = word.verb ? word.kanji + "／" + word.polite : word.kanji;
-  const kana = word.verb ? word.kana + "／" + word.polite_kana : word.kana;
+  // 汉字模式：主要学的字和它的读音标粗（答对绿、答错红，颜色由 #feedback 的 class 决定，见 style.css）
+  const focus = word.focus || {};
+  if (focus.char && !el.feedback.classList.contains("focus-wrong")) el.feedback.classList.add("focus-right");
+  // 动词显示 “原形／敬体”；汉字模式的锚点读法题只显示原形（不然太乱），录音照常读两种
+  const polite = Boolean(word.verb) && word.mode !== "read";
+  const kanjiLine = polite ? word.kanji + "／" + word.polite : word.kanji;
+  const kanaLine = polite ? word.kana + "／" + word.polite_kana : word.kana;
+  el.kanji.replaceChildren(...withFocus(word.kanji, focus.char), polite ? "／" + word.polite : "");
   el.kana.innerHTML = "";
   if (marks) {
     // 原形的每个字：打错的标红；敬体照常显示
-    el.kana.append(...markedText(word.kana, marks.answer), word.verb ? "／" + word.polite_kana : "");
-  } else if (kana !== el.kanji.textContent) {
-    el.kana.textContent = kana;                // 只有假名的词（ある、する…）上下两行一样，不显示第二行
+    el.kana.append(...markedText(word.kana, marks.answer), polite ? "／" + word.polite_kana : "");
+  } else if (kanaLine !== kanjiLine) {           // 只有假名的词（ある、する…）上下两行一样，不显示第二行
+    el.kana.append(...withFocus(word.kana, focus.reading), polite ? "／" + word.polite_kana : "");
   }
   return playSound(word);
+}
+
+// 把 text 里第一次出现的 part 包成 <span class="focus">；没有 part（或找不到）就原样返回
+function withFocus(text, part) {
+  const at = part ? text.indexOf(part) : -1;
+  if (at < 0) return [text];
+  return [text.slice(0, at), make("span", "focus", part), text.slice(at + part.length)];
 }
 
 // 把文字拆成一个个字，marks[i] 为 true 的字标红

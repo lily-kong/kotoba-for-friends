@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "images"                  # 原图（不提交）
 OUT = ROOT / "images-enc"              # 加密后的图片（提交）
 META = OUT / "meta.json"               # 解密需要的公开参数：salt、迭代次数、用来验证密码的一小段密文
+INDEX = OUT / "index.json"             # 有加密图片的词的 id 列表：网页用它暂时隐藏还没有图片的词
 PASSWORD_FILE = ROOT / ".image-password"
 ITERATIONS = 200_000                   # PBKDF2 的迭代次数：越大越难暴力猜密码，手机上解锁也越慢
 CHECK_TEXT = b"kotoba"                 # 网页用它判断密码对不对
@@ -129,8 +130,16 @@ def main():
     for blob in sorted(OUT.glob("*.bin")):
         if not (SRC / f"{blob.stem}.jpg").exists():
             print(f"WARN  images-enc/{blob.name}: images/ 里没有对应的原图")
+    write_index()
     print(f"加密了 {count} 张图片（共 {len(list(OUT.glob('*.bin')))} 张）")
     return 0
+
+
+def write_index():
+    """写出 images-enc/index.json：现在有加密图片的全部 id。
+    网页读这个列表：还没有图片的词先不出现（不用一个个去问服务器“这张图存不存在”）"""
+    ids = sorted(blob.stem for blob in OUT.glob("*.bin"))
+    INDEX.write_text("[\n" + ",\n".join(f'  "{i}"' for i in ids) + "\n]\n", encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

@@ -33,6 +33,21 @@
     <input id="importFile" type="file" accept="application/json,.json" class="hidden">
   </div>
 
+  <!-- 汉字模式（由 js/kanjimode.js 显示） -->
+  <div id="kanjiPage" class="hidden">
+    <h1>Kanji</h1>
+    <p id="kanjiInfo"></p>
+    <div id="kanjiStudyInfo"></div>
+    <button id="kanjiStudy" type="button" class="hidden">Study kanji</button>
+    <div id="kanjiList"></div>
+  </div>
+
+  <!-- 底部的模式切换：普通背单词 / 汉字。只在首页和汉字页显示（js/ui.js 的 show()） -->
+  <nav id="modeBar" class="hidden">
+    <button id="modeWords" type="button" class="mode">Words <span lang="ja">単語</span></button>
+    <button id="modeKanji" type="button" class="mode">Kanji <span lang="ja">漢字</span></button>
+  </nav>
+
   <!-- 一个分类（tag）里的单词列表 -->
   <div id="tag" class="hidden">
     <button id="back" type="button" class="small">&larr; Back</button>
@@ -53,6 +68,8 @@
       <div id="progress"><div id="progressFill"></div></div>
     </div>
     <img id="image" alt="">
+    <!-- 汉字模式的锚点读法题：这个字的小词的图片（提示，也是接下来的词的预告） -->
+    <div id="previews" class="hidden"></div>
     <div id="note"></div>
     <div id="en"></div>
     <div id="display"></div>

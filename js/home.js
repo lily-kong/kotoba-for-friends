@@ -131,7 +131,7 @@ function renderTag(tag) {
 }
 
 // 把时间显示成 "now" / "in 5 h" / "in 3 d"
-function formatWhen(time) {
+export function formatWhen(time) {
   const diff = time - Date.now();
   if (diff <= 0) return "now";
   const hours = Math.ceil(diff / (60 * 60 * 1000));

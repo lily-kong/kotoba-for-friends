@@ -2,6 +2,30 @@
 
 Versions follow `major.minor.patch`. Data on friends' phones (progress, study log) must keep working across every version.
 
+## Unreleased
+
+**Word list**
+
+- 96 more verbs and 21 い-adjectives (`"verb": false`). Doshi_N5 now holds only kun-reading words with one kanji or none; honorific and humble verbs, 〜する verbs, 信じる and words with two or more kanji moved to Doshi_hoka. Notes added where the English was ambiguous (起きる, する, 呼ぶ).
+- Words without a picture are hidden for now instead of showing a blank picture, and appear on their own once the picture is encrypted: `tools/encrypt_images.py` writes `images-enc/index.json`, the list of words that have a picture, and the app reads it.
+
+**Kanji mode**
+
+- A bar at the bottom of the home page switches between **Words** and **Kanji**.
+- A kanji is learned from an anchor word already learned elsewhere (見る), with up to 3 small words from `kanji_words.json` that use the same kanji (意見, 花見, 見学). 85 small words for 47 kanji so far; they bring in 54 kanji the verbs don't have yet, which can anchor the next round. The kanji list is `kanji.json` (JLPT N5 and N4, with 見・来・言・車・花 added).
+- **Study kanji** teaches up to 4 kanji (12 cards) per group. Each kanji starts with a reading question on its anchor: only the kanji (見る), with the pictures of its small words above it as a hint and a preview. Right on the first try unlocks the small words, asked like ordinary words; otherwise only the reading question is repeated and the group moves on to the next kanji. A kanji opens once its anchor word has been learned anywhere, so learned small words can anchor the next round.
+- Answers show the studied kanji and its reading in bold, green when right and red when the answer was shown; the rest stays black. Reading questions show only the dictionary form (入る / はいる) and play the anchor's recording.
+- Own progress (`kotoba-kanji-progress-v1`, included in export, import and reset), so Words mode's schedule is untouched. Reading questions are logged with `"mode": "read"`.
+
+**Answers**
+
+- A missing long vowel at the end counts as a near miss when Hint is pressed (りょこ for りょこう): "Almost" instead of the usual hint, in both modes. Pressing Hint means the answer is finished, so it can't be confused with an unfinished one. This mattered once Kanji mode added many on'yomi nouns ending in a long vowel.
+
+**Tools**
+
+- `tools/check_words.py` checks `kanji_words.json` (fields, anchors, anchor chains that must reach `words.json`, at most 3 small words per anchor, pictures and recordings), skips words in hidden tags, and reports missing pictures as INFO instead of an error (a stale `images-enc/index.json` is an error).
+- `tools/make_audio.py` records small words too, skips hidden tags, and no longer flags long vowels written the way VOICEVOX pronounces them (センセエ, リョコオ).
+
 ## 0.2.5 — 2026-11-24
 
 - Review between days now uses FSRS-5 (`js/fsrs.js`, the algorithm behind Anki) instead of the 1 → 60 day ladder. Each word keeps a stability (days until it's 90% likely to be remembered) and a difficulty, and is reviewed when its chance of being remembered drops to 90%, at most 180 days later. The first try of each word in a group is the main rating: right = Good (a new word right on the first try = Easy, it was already known), after a hint or "Almost" = Hard, answer shown = Again. Later tries in the same group count as same-day reviews (FSRS-5's own formula), so a word missed three times in its group comes back more often than one missed once (`COUNT_SAME_DAY` turns this off). A forgotten word no longer starts over from one day, a word reviewed late and still remembered gets a longer interval, and hard words come back more often than easy ones.

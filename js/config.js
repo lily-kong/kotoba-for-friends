@@ -6,7 +6,8 @@
 export const HIDDEN_TAGS = ["Doshi_hoka"];
 
 // ---------- 一组的学习方式 ----------
-export const GROUP_SIZE = 12;          // 每组单词数
+export const GROUP_SIZE = 12;          // 每组单词数（汉字模式：读法题 + 小词一共不超过这么多）
+export const MAX_KANJI_PER_GROUP = 4;  // 汉字模式：每组最多几个汉字（js/kanjischedule.js）
 export const NEW_PER_GROUP = 4;        // 每组的新词数（到期的复习词不多，放得下的时候）
 export const NEW_WHEN_BACKLOG = 1;     // 到期的复习词太多、一组放不下时，每组只放几个新词（至少 1 个，一直有新东西学）
 export const AFTER_SOUND_MS = 500;     // 读音结束后，再停多久进入下一个词（毫秒）

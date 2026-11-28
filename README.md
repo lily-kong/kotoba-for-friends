@@ -41,6 +41,8 @@ js/sound.js          pronunciation
 js/home.js           home page and category pages
 js/images.js         unlocks and decrypts the pictures
 js/guide.js          shows FRIENDS.md inside the app
+js/kanjimode.js      Kanji mode page: units, their status, the Study kanji button
+js/kanjischedule.js  Kanji mode rules: units (kanji + anchor + small words), which units go into a group
 tools/check_words.py    checks words.json before you commit
 tools/encrypt_images.py encrypts images/ into images-enc/
 tools/make_chime.py     makes the correct-answer sound sounds/correct.mp3
@@ -51,11 +53,13 @@ tools/voice.json        which engine (Azure or VOICEVOX), voice and settings
 tools/audio_fixes.json  hand-corrected readings and pitch accents for recordings
 tools/audio_manifest.json  which text, fix and settings made each recording
 words.json           the word list
+kanji.json           the JLPT N5 and N4 kanji used by Kanji mode
+kanji_words.json     Kanji mode's small words, each linked to an anchor word
 DEVLOG.md            why the project is built this way, version by version
 FEEDBACK.md          real feedback from friends, as it arrived
 FRIENDS.md           the guide and letters for friends (also shown in the app)
 images/              one picture per word (originals, NOT committed)
-images-enc/          encrypted pictures (committed)
+images-enc/          encrypted pictures and index.json, the list of words that have one (committed)
 audio/               recordings, audio/<id>.mp3 (see audio/README.md)
 sounds/correct.mp3   the sound played when a word is learned
 ```
@@ -82,7 +86,7 @@ The pictures have copyright restrictions, so the originals in `images/` stay on 
 1. Put the picture in `images/<id>.jpg` and edit `words.json`.
 2. `python tools/encrypt_images.py` (encrypts only new or changed pictures)
 3. `python tools/check_words.py`, and fix every ERROR.
-   Words that still have no picture are listed in `missing_images.txt` (Japanese, English, file name; in list order, not committed).
+   Words that still have no picture are listed in `missing_images.txt` (Japanese, English, file name; in list order, not committed). They are not an error: the app hides them for now and shows them as soon as their picture is encrypted. This is automatic, unlike `HIDDEN_TAGS`. `tools/encrypt_images.py` writes `images-enc/index.json`, the list of ids that have a picture, and the app reads it; the checker makes sure the list is up to date.
 4. Commit `words.json` and `images-enc/`.
 
 The checker checks every field, finds duplicate ids, non-kana characters, missing, orphaned or not-yet-encrypted pictures, and words with the same English. It also compares with the last commit and refuses a word list where a committed `id` has disappeared.
@@ -108,6 +112,34 @@ One word per line:
 - The picture must be `images/<id>.jpg` (encrypted to `images-enc/<id>.bin`).
 - **Study all words** picks new words at random; a category's own **Study** button takes them in the order they appear in the file, so keep pairs (開く／開ける) next to each other.
 
+### Kanji mode
+
+The bar at the bottom of the home page switches between **Words** (the normal word study, the default) and **Kanji**.
+
+**The idea.** A kanji is learned from a word the learner already knows, its *anchor* (見る), together with 1–3 *small words* that use the same kanji with another reading (意見, 花見). A unit is one kanji + one anchor word + its small words. Kanji without small words are not in Kanji mode.
+
+**One unit in a group** (`js/kanjischedule.js`, using the prerequisite rule in `js/session.js`):
+
+1. Reading question: only the anchor in kanji (見る), no picture of its own, no English, no note. Type the kana. Above it, the pictures of all the kanji's small words are shown, all the same size whether there is one or three: a hint, and a preview of what comes next.
+2. Right on the first try → its small words come next, asked like ordinary words (picture and English → kana).
+3. Not right → only the reading question is repeated inside the group; the small words of this kanji are skipped this time, and the group moves on to the next kanji.
+
+A group has at most `MAX_KANJI_PER_GROUP` (4) kanji and `GROUP_SIZE` (12) cards. Units with something due come first (most overdue first), then new units in the order of `kanji.json` (N5, then N4).
+
+**Anchors and generations.** A unit can be studied only when its anchor word has been learned somewhere (it has a progress record):
+
+- first round: the anchor is a word from Words mode (`words.json`), e.g. 見る;
+- second round: the anchor is a small word already learned in Kanji mode, e.g. 電車 hanging on 電話. A learned small word becomes a possible anchor automatically;
+- words that can't hang on any anchor go into `words.json` and are learned in Words mode first; once learned, they can anchor kanji too.
+
+The checker makes sure every anchor chain ends in a word of `words.json` (no small words anchoring each other in a circle), and warns when a unit has more than 3 small words.
+
+**Data.** `kanji.json` lists the JLPT kanji (`"N5"` and `"N4"`, one string each; used for ordering and the level label). `kanji_words.json` holds the small words: `id`, `kana`, `kanji`, `en`, `note`, `audio` and `anchors` (same format as above; the anchor word is in `words.json` or is another small word). As in `words.json`, `en` is one English meaning; anything extra goes in `note` (`""` for none). Each anchor carries at most 3 small words: common exam words of N4–N5, preferably nouns, together covering the kanji's readings at that level. The anchor verb doesn't count as covering its own reading: a word with the same reading reinforces it (見る → 花見, 食べる → 食べ物), and two words with the same reading are fine when both are common (意見, 見学). Where possible a small word brings in a kanji the verbs don't have yet (先生 brings 先, 図書館 brings 図 and 館), so that it can anchor the next round. Small words need a picture `images/<id>.jpg` like any word; missing ones are listed in `missing_images.txt` as `[kanji mode]`. `tools/make_audio.py` records small words too (and sets their `audio`); a reading question plays its anchor word's recording.
+
+**Answer display.** When the answer is shown in Kanji mode, the kanji being studied and its reading in this word are bold: green when answered right, red when the answer had to be shown; the rest stays black (先**生** / せん**せい**). For small words the reading comes from `anchors`; for an anchor word it is worked out by removing the okurigana (見る → み), or, when two kanji can't be split (面白い), by the reading a small word gives for the same kanji (白い → しろ).
+
+**Progress.** Kanji mode keeps its own progress (`kotoba-kanji-progress-v1`, same record format and the same FSRS schedule), so it never changes the review schedule of Words mode. The reading question of 見る (`read:miru-to_see`) is a different card from "to see → みる" in Words mode. Log entries of reading questions have `"mode": "read"` and the anchor's id as `word`.
+
 ### Data on each phone
 
 Each friend's data lives in their browser's `localStorage` (see `js/storage.js`). Deploying a new version replaces only the files on the server, never this data.
@@ -118,6 +150,7 @@ Each friend's data lives in their browser's `localStorage` (see `js/storage.js`)
 | `kotoba-log-v1` | study log: every answer | **append-only**, never edited or deleted |
 | `kotoba-user` | random user id, e.g. `u_8f3a2k1x` | created once |
 | `kotoba-image-password` | the picture password | saved when entered |
+| `kotoba-kanji-progress-v1` | Kanji mode progress: reading questions (`read:<anchor id>`) and small words | rewritten by the review algorithm |
 | `kotoba-letter-read` | title of the latest letter this phone has read | when the guide is opened |
 
 A study log entry (practice typing after the answer is shown is not logged):

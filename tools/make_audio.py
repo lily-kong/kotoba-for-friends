@@ -22,6 +22,9 @@
      _ 表示清音化，、 表示停顿。review.html 里会显示现在的读法，复制过来改就行。两种引擎都用这份校正
   6. --approve：把 OK / FIXED 的草稿发布到 audio/，设成 "audio": true
 
+处理的词：words.json 里在用的词（隐藏分类 HIDDEN_TAGS 里的词先跳过，取消隐藏后再生成），
+和汉字模式的小词（kanji_words.json）。--ids 指定的词不管隐不隐藏都会生成。
+
 需要：VOICEVOX 正在运行；python -m pip install lameenc（VOICEVOX 的 WAV 转 MP3 用）；
 用 Azure 时，密钥写在 .tts-keys.json：{"azure_key": "...", "azure_region": "japaneast"}
 参数在 tools/voice.json。改了参数或换了引擎，所有录音都会被重新生成。
@@ -31,6 +34,7 @@ import argparse
 import hashlib
 import html
 import json
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -40,6 +44,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WORDS_FILE = ROOT / "words.json"
+KANJI_WORDS_FILE = ROOT / "kanji_words.json"        # 汉字模式的小词（也要录音）
+CONFIG_FILE = ROOT / "js" / "config.js"             # 读取 HIDDEN_TAGS（暂时隐藏的分类）
 VOICE_FILE = ROOT / "tools" / "voice.json"          # 用哪个引擎、角色和参数（提交）
 FIXES_FILE = ROOT / "tools" / "audio_fixes.json"    # 人工校正的读法和声调（提交）
 MANIFEST_FILE = ROOT / "tools" / "audio_manifest.json"  # 每个已发布的录音是用什么文字和参数生成的（提交）
@@ -60,10 +66,29 @@ def save_json(path, data):
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def save_words(words):
-    """和 words.json 现在的格式一样：一个词一行"""
+def save_words(words, path=WORDS_FILE):
+    """和 words.json、kanji_words.json 现在的格式一样：一个词一行"""
     lines = [json.dumps(w, ensure_ascii=False) for w in words]
-    WORDS_FILE.write_text("[\n  " + ",\n  ".join(lines) + "\n]\n", encoding="utf-8", newline="\n")
+    path.write_text("[\n  " + ",\n  ".join(lines) + "\n]\n", encoding="utf-8", newline="\n")
+
+
+def load_word_files():
+    """读出 words.json 和 kanji_words.json（没有就是空列表）。两个文件的 id 不会重复（check_words.py 检查）"""
+    words = json.loads(WORDS_FILE.read_text(encoding="utf-8"))
+    kanji_words = load_json(KANJI_WORDS_FILE, [])
+    return words, kanji_words
+
+
+def hidden_tags():
+    """js/config.js 里的 HIDDEN_TAGS，例如 ["Doshi_hoka"]"""
+    match = re.search(r"HIDDEN_TAGS\s*=\s*(\[[^\]]*\])", CONFIG_FILE.read_text(encoding="utf-8"))
+    return json.loads(match.group(1)) if match else []
+
+
+def is_hidden(word, hidden):
+    """这个词的分类全都被隐藏了（和 js/words.js 一样）。小词没有分类，不会被隐藏"""
+    tags = word.get("tags") or []
+    return len(tags) > 0 and all(tag in hidden for tag in tags)
 
 
 # ---------- VOICEVOX：分析读法和声调，也可以直接合成 ----------
@@ -131,9 +156,24 @@ def katakana(text):
     return "".join(chr(ord(c) + 0x60) if "ぁ" <= c <= "ゖ" else c for c in text)
 
 
+O_ROW = set("オコゴソゾトドノホボポモヨョロヲ")    # オ段的假名
+E_ROW = set("エケゲセゼテデネヘベペメレ")          # エ段的假名
+
+
 def same_sound(text):
-    """发音相同的假名统一写法再比较：づ/ず、ぢ/じ 读音一样（VOICEVOX 写成 ズ、ジ）"""
-    return text.replace("ヅ", "ズ").replace("ヂ", "ジ")
+    """发音相同的假名统一写法再比较：
+    - づ/ず、ぢ/じ 读音一样（VOICEVOX 写成 ズ、ジ）
+    - 长音：VOICEVOX 按实际发音写，センセイ 写成 センセエ、リョコウ 写成 リョコオ。
+      所以 オ段后面的 ウ 当作 オ，エ段后面的 イ 当作 エ（两边都这样统一，真的读错还是会被发现）"""
+    text = text.replace("ヅ", "ズ").replace("ヂ", "ジ")
+    out = []
+    for char in text:
+        if char == "ウ" and out and out[-1] in O_ROW | {"オ"}:
+            char = "オ"
+        elif char == "イ" and out and out[-1] in E_ROW | {"エ"}:
+            char = "エ"
+        out.append(char)
+    return "".join(out)
 
 
 def expected_reading(word):
@@ -159,7 +199,9 @@ def fingerprint(word, fix, config):
 def generate(ids, limit):
     config, fixes = load_json(VOICE_FILE, None), load_json(FIXES_FILE, {})
     manifest, status = load_json(MANIFEST_FILE, {}), load_json(STATUS_FILE, {})
-    words = [w for w in json.loads(WORDS_FILE.read_text(encoding="utf-8")) if not w["retired"]]
+    main_words, kanji_words = load_word_files()
+    hidden = hidden_tags()
+    words = [w for w in main_words + kanji_words if not w.get("retired")]
     keys = load_json(KEYS_FILE, {}) if config["engine"] == "azure" else {}
     if config["engine"] == "azure" and not (keys.get("azure_key") and keys.get("azure_region")):
         sys.exit(f"用 Azure 需要在 {KEYS_FILE.name} 里写上 azure_key 和 azure_region")
@@ -176,8 +218,8 @@ def generate(ids, limit):
 
     if ids:             # 指定了的词：一定重新生成
         todo = [w for w in words if w["id"] in ids]
-    else:               # 还没有录音的词，以及文字、校正、引擎或参数改过的词
-        todo = [w for w in words if not published(w) and not drafted(w)]
+    else:               # 还没有录音的词，以及文字、校正、引擎或参数改过的词（隐藏分类里的词先跳过）
+        todo = [w for w in words if not published(w) and not drafted(w) and not is_hidden(w, hidden)]
     if limit:
         todo = todo[:limit]
 
@@ -242,8 +284,8 @@ FIXED = 用了人工校正。OK = 读音一致，请听一下声调。</p>
 def approve():
     config, fixes = load_json(VOICE_FILE, None), load_json(FIXES_FILE, {})
     manifest, status = load_json(MANIFEST_FILE, {}), load_json(STATUS_FILE, {})
-    words = json.loads(WORDS_FILE.read_text(encoding="utf-8"))
-    by_id = {w["id"]: w for w in words}
+    words, kanji_words = load_word_files()
+    by_id = {w["id"]: w for w in words + kanji_words}
 
     published, skipped = [], []
     for word_id, s in list(status.items()):
@@ -264,6 +306,8 @@ def approve():
         published.append(word_id)
 
     save_words(words)
+    if KANJI_WORDS_FILE.exists():
+        save_words(kanji_words, KANJI_WORDS_FILE)
     save_json(MANIFEST_FILE, dict(sorted(manifest.items())))
     save_json(STATUS_FILE, status)
     write_review_page(status)

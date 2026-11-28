@@ -39,6 +39,26 @@ main { width: 100%; max-width: 420px; text-align: center; }
   transform: translateY(40px) scale(1.4);
 }
 .started #en { transform: none; transition: transform 0.25s ease; }
+/* 汉字模式的锚点读法题：只显示汉字（例如 見る），不显示图片和 note；汉字放大、往下挪一点，留在画面上方的中间 */
+#quiz.read-mode #image, #quiz.read-mode #note { display: none; }
+/* 汉字模式的答案：主要学的字和它的读音标粗，答对绿、答错红；其余部分保持黑色 */
+#feedback .focus { font-weight: 700; }
+#feedback.focus-right .focus { color: #1a8f3c; }
+#feedback.focus-wrong .focus { color: #d03030; }
+#feedback.focus-right #kana, #feedback.focus-wrong #kana { color: #222; }
+#quiz.read-mode #en { font-size: 40px; font-weight: 400; margin-top: 64px; }
+/* 读法题上方的小词图片：每张都是“一行三张”时的大小，只有一两张时也一样大、居中，不会忽大忽小 */
+#previews { display: flex; justify-content: center; gap: 8px; }
+#previews.hidden { display: none; }
+#previews .preview {
+  width: calc((100% - 16px) / 3);
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+#quiz.read-mode #previews:not(.hidden) ~ #en { margin-top: 32px; }   /* 有图片时，汉字离图片近一点 */
 
 /* 答题区：没有真正的输入框，文字由 JS 画出来，所以手机不会弹出自带键盘。
    开始打字前是隐藏的 */
@@ -290,6 +310,50 @@ html.quiz-mode body { padding-bottom: 0; }    /* 键盘贴到屏幕底边 */
 #guideContent hr { border: none; border-top: 1px solid #ddd; margin: 24px 0; }
 #guideContent code { padding: 0 4px; background: #eee; border-radius: 4px; word-break: break-all; }
 #guideContent li { margin: 4px 0; }
+
+/* ---------- 底部的模式切换栏（Words / Kanji） ---------- */
+html.with-mode-bar body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }   /* 内容不被底部栏挡住 */
+#modeBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));   /* 避开 iPhone 底部横条 */
+  background: #fff;
+  border-top: 1px solid #ddd;
+}
+#modeBar.hidden { display: none; }
+.mode {
+  flex: 1;
+  max-width: 200px;
+  margin: 0;
+  padding: 10px;
+  font-size: 16px;
+  color: #555;
+  background: #eef0f4;
+}
+.mode.active { color: #fff; background: #4a7dff; }   /* 当前所在的模式 */
+.mode span { font-size: 13px; opacity: 0.8; }
+
+/* ---------- 汉字页 ---------- */
+#kanjiInfo { color: #555; line-height: 1.5; }
+.row.kanji-row { align-items: center; gap: 16px; }
+.kanji-head { display: flex; flex-direction: column; align-items: center; min-width: 48px; }
+.kanji-char { font-size: 36px; line-height: 1.1; }
+.kanji-level { font-size: 12px; color: #888; }
+.kanji-body { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.kanji-anchors, .kanji-small { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.kanji-small { padding-top: 8px; border-top: 1px dashed #ddd; }   /* 小词：和锚点词之间画一条虚线 */
+.kanji-anchor.small { font-size: 16px; color: #555; }
+#kanjiStudyInfo { color: #555; margin-bottom: 4px; }
+.kanji-status { font-size: 13px; color: #777; }
+.kanji-status.due { color: #d03030; font-weight: 600; }
+.row.kanji-row.locked { opacity: 0.55; }      /* 锚点词还没学过：先去 Words 模式学 */
+.kanji-anchor { display: flex; flex-direction: column; font-size: 18px; }
+.kanji-anchor .sub { color: #777; font-size: 13px; }
 
 /* ---------- 密码页 ---------- */
 #lock p { color: #555; }

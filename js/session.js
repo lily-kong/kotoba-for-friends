@@ -19,13 +19,18 @@
 //   4. 都不行（新词用完了，错词都还没到点）→ 从还没学会的错词里，挑最久没出现的提前出。
 //      这样只要还剩 3 个以上没学会的词，同一个词两次出现之间至少隔 2 个别的词；
 //      只剩 1～2 个词时，才会连着或交替出现
+//
+// 前置条件（可选，汉字模式用）：一个词可以“锁”在另一个词（前置词）后面。
+// 锁住的词一开始不出现；前置词第一次出现就答对 → 锁住的词马上排到最前面接着出；
+// 前置词第一次没答对 → 锁住的词这一组取消（不出现，也不算进进度条）。前置词自己照常复习
 
 import {
   PASSES_AFTER_HINT, PASSES_AFTER_WRONG, MAX_REVIEWS, GAP_AFTER_MISS, GAP_AFTER_CORRECT, MAX_STRUGGLING,
 } from "./config.js";
 
-// 开始一组。words 的顺序就是新词出现的顺序
-export function createSession(words) {
+// 开始一组。words 的顺序就是新词出现的顺序。
+// requires（可选）：Map(锁住的词 → 前置词)，两个都要在 words 里（见文件开头“前置条件”）
+export function createSession(words, requires = new Map()) {
   const items = words.map((word) => ({
     word: word,
     seen: false,       // 出现过没有
@@ -36,10 +41,20 @@ export function createSession(words) {
     needed: 0,         // 复习时需要答对几次才学会
     due: 0,            // 最早在第几个位置可以再出现
     lastShown: -1,     // 上一次在第几个位置出现
+    locked: [],        // 锁在这个词后面的条目（这个词第一次答对后才出现）
   }));
+  const itemOf = new Map(items.map((item) => [item.word, item]));
+  const lockedItems = new Set();
+  for (const [word, prerequisite] of requires) {
+    const item = itemOf.get(word), before = itemOf.get(prerequisite);
+    if (item && before && item !== before) {
+      before.locked.push(item);
+      lockedItems.add(item);
+    }
+  }
   return {
-    items: items,              // 本组全部条目
-    fresh: items.slice(),      // 还没出现过的
+    items: items,              // 本组全部条目（锁住、还没决定出不出的也在里面；取消的会被拿掉）
+    fresh: items.filter((item) => !lockedItems.has(item)),   // 还没出现过、可以出的
     learning: [],              // 答错了、还没通过的
     step: 0,                   // 现在是第几个位置
     lastWasRepeat: false,      // 上一个出的是不是复习词
@@ -73,6 +88,11 @@ export function nextItem(session) {
   return session.learning.reduce((a, b) => (b.lastShown < a.lastShown ? b : a));
 }
 
+// 锁在 item 后面的全部条目（包括锁在它们后面的，一层层往下）
+function lockedBehind(item) {
+  return item.locked.flatMap((other) => [other, ...lockedBehind(other)]);
+}
+
 // 记录这一次出现的结果：result = "right" / "hinted" / "wrong"（见文件开头）
 // 返回 "learned" = 这一刻学会了（第一次就答对，或者复习答对满了要求的次数）；
 //      "finished" = 复习满 MAX_REVIEWS 次、没有答对够次数，也算通过；其他情况返回 null
@@ -82,7 +102,15 @@ export function answer(session, item, result) {
   let outcome = null;
   session.lastWasRepeat = item.seen;
   item.results.push(result);
-  if (!item.seen) session.fresh = session.fresh.filter((other) => other !== item);
+  if (!item.seen) {
+    session.fresh = session.fresh.filter((other) => other !== item);
+    // 锁在它后面的条目：第一次就答对 → 排到最前面接着出；没答对 → 这一组取消
+    if (right) session.fresh = item.locked.concat(session.fresh);
+    else {
+      const cancelled = lockedBehind(item);
+      session.items = session.items.filter((other) => !cancelled.includes(other));
+    }
+  }
 
   if (isReview) {
     item.reviews += 1;
